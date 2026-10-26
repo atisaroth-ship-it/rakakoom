@@ -1,0 +1,56 @@
+name: backup database
+
+on:
+  schedule:
+    # Sunday 20:00 Bangkok. Weekly because Neon's free plan allows 5 GB/month of outbound transfer.
+    - cron: '0 13 * * 0'
+  workflow_dispatch:
+
+concurrency:
+  # Never dump while a collect run is writing.
+  group: collect
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install a PostgreSQL client matching the server
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-17
+      - name: Dump
+        run: |
+          set -euo pipefail
+          day=$(TZ=Asia/Bangkok date +%F)
+          echo "DAY=$day" >> "$GITHUB_ENV"
+          /usr/lib/postgresql/17/bin/pg_dump -Fc --no-owner -d "$DATABASE_URL" -f "rakakoom-$day.dump"
+          ls -lh "rakakoom-$day.dump"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rakakoom-${{ env.DAY }}
+          path: rakakoom-${{ env.DAY }}.dump
+          retention-days: 90
+          if-no-files-found: error
+      - name: Heartbeat
+        if: success()
+        run: '[ -z "$BACKUP_HEALTHCHECK_URL" ] || curl -fsS -m 30 "$BACKUP_HEALTHCHECK_URL" > /dev/null'
+        env:
+          BACKUP_HEALTHCHECK_URL: ${{ secrets.BACKUP_HEALTHCHECK_URL }}
+      - name: Alert on failure
+        if: failure() || cancelled()
+        run: bash scripts/notify-failure.sh "backup database"
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          ADMIN_LINE_USER_ID: ${{ secrets.ADMIN_LINE_USER_ID }}
+          HEALTHCHECK_URL: ${{ secrets.BACKUP_HEALTHCHECK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

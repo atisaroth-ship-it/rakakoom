@@ -1,0 +1,47 @@
+name: collect prices
+
+on:
+  schedule:
+    # 10:30, 12:30, 14:30, 16:30 Bangkok. GitHub may start these late or skip one under load,
+    # so there are several slots; a slot that finds today already collected exits at once.
+    - cron: '30 3,5,7,9 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Collect today's prices
+        run: npm run --silent collect
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FEED_URLS: ${{ secrets.FEED_URLS }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          ADMIN_LINE_USER_ID: ${{ secrets.ADMIN_LINE_USER_ID }}
+          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
+          DB_SIZE_LIMIT_MB: ${{ vars.DB_SIZE_LIMIT_MB }}
+          ALERT_MARKER: ${{ github.workspace }}/.collect-alerted
+      # Backstop: the job died without the program's own alert (timeout, runner lost, install failure).
+      # hashFiles only sees files inside the workspace, hence the marker lives there.
+      - name: Alert on job failure
+        if: (failure() || cancelled()) && hashFiles('.collect-alerted') == ''
+        run: bash scripts/notify-failure.sh "collect prices"
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          ADMIN_LINE_USER_ID: ${{ secrets.ADMIN_LINE_USER_ID }}
+          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
