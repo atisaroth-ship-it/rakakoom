@@ -1,6 +1,7 @@
 ﻿# Asks the owner for each GitHub Actions secret and stores it with gh. Values are typed/pasted by the owner,
 # hidden while typing, and sent straight to GitHub; nothing is written to disk or printed.
-# Run: powershell -ExecutionPolicy Bypass -File .\scripts\set-secrets.ps1
+# Run: powershell -ExecutionPolicy Bypass -File .\scripts\set-secrets.ps1 [-Only NAME1,NAME2]
+param([string[]]$Only)
 $ErrorActionPreference = 'Stop'
 $repo = 'atisaroth-ship-it/rakakoom'
 $gh = 'C:\Program Files\GitHub CLI\gh.exe'
@@ -13,6 +14,12 @@ $secrets = @(
   @{ Name = 'HEALTHCHECK_URL';           Hint = 'healthchecks.io > check rakakoom-collect > Ping URL' },
   @{ Name = 'BACKUP_HEALTHCHECK_URL';    Hint = 'healthchecks.io > check rakakoom-backup > Ping URL' }
 )
+
+# powershell -File passes "A,B" as one string; split it.
+if ($Only) {
+  $names = $Only | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() }
+  $secrets = $secrets | Where-Object { $names -contains $_.Name }
+}
 
 foreach ($s in $secrets) {
   Write-Host ''
