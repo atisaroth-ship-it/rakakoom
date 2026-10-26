@@ -318,3 +318,48 @@ test('ping reports success and fail', async () => { /* success → 'https://hc/a
 - แผน 2: บอท LINE (รับลิงก์, จับคู่รุ่น, ราคา 3 แบบ, คำแนะนำ, ป้ายร้าน, การ์ด Flex)
 - แผน 3: หน้าชาร์ต LIFF
 - แผน 4: หน้าแอดมินปฏิทินโค้ด/ปฏิทินโปร
+
+---
+
+## ส่วนเพิ่ม (26 ต.ค.): ย้ายไป GitHub Actions + Neon
+
+แม่หมออนุมัติให้เปลี่ยนโฮสต์เป็น GitHub Actions (repo สาธารณะ) + Neon ฟรี และเก็บเฉพาะบางหมวด (spec ข้อ 5 ทาง D, 6.1, 8) Task 7 เดิม (systemd บนเครื่องเสมือน) ถูกแทนที่ด้วย Task 8–10
+
+### Task 8: ตัวกรองหมวดสินค้า
+
+**Files:** Create `config/categories.json`, `src/feed/scope.ts`; Modify `src/feed/parseRow.ts`, `src/collect/runDaily.ts`; Test `tests/feed/scope.test.ts`, `tests/collect/runDaily.test.ts`
+
+**Interfaces:**
+- `interface CategoryScope { include: string[]; excludeCategory2: Record<string, string[]> }` — `include` = ค่า `global_category1` ที่เก็บ, `excludeCategory2[cat1]` = ค่า `global_category2` ที่ตัดออกภายใต้หมวดนั้น
+- `loadScope(path?: string): CategoryScope` (ค่าเริ่ม `config/categories.json`)
+- `inScope(r: FeedRecord, scope: CategoryScope): boolean`
+- `SkipReason` เพิ่ม `'out_of_scope'` — ไม่นับเป็นข้อมูลผิดรูปแบบ
+- `RunDeps.scope?: CategoryScope` (ไม่ส่ง = เก็บทุกหมวด) — ตรวจหมวดก่อนแบรนด์
+- ค่าใน `config/categories.json`: include `Mobile & Gadgets`, `Home Appliances`, `Computers & Accessories`, `Cameras & Drones`, `Audio`, `Gaming & Consoles`; excludeCategory2 `{ "Mobile & Gadgets": ["Accessories"] }`
+
+Tests: `inScope keeps listed categories`, `inScope drops excluded category2`, `out-of-scope rows are skipped but not malformed` (runDaily: 10 ในหมวด + 5 นอกหมวด → success, skipped.out_of_scope 5)
+
+### Task 9: แจ้งเตือนเมื่อฐานข้อมูลใกล้เต็ม
+
+**Files:** Create `src/db/size.ts`; Modify `src/config.ts`, `src/collect/runDaily.ts`; Test `tests/db/size.test.ts`, `tests/config.test.ts`
+
+**Interfaces:**
+- `Config.dbSizeLimitBytes: number` จาก `DB_SIZE_LIMIT_MB` (ค่าเริ่ม 1024)
+- `databaseSizeBytes(db: Db): Promise<number>` (`pg_database_size(current_database())`)
+- `RunDeps.dbSizeLimitBytes?: number` — หลังรอบ success/suspect ถ้าขนาด ≥ 80% ของ limit → alert `RakaKoom: ฐานข้อมูลใช้ไป {MB} MB จาก {limitMB} MB ({pct}%) ใกล้เต็มแล้ว`
+- RunResult เพิ่ม `dbSizeBytes?: number`
+
+Tests: `alerts when database reaches 80% of the limit`, `no size alert below 80%`, `DB_SIZE_LIMIT_MB defaults to 1024`
+
+### Task 10: GitHub Actions workflows และคู่มือ
+
+**Files:** Delete `deploy/`; Create `.github/workflows/collect.yml`, `.github/workflows/backup.yml`, `.github/workflows/keepalive.yml`, `docs/setup-github-neon.md`
+
+ค่าที่กำหนด:
+- collect.yml: `cron: '30 3,5,7,9 * * *'` (10:30–16:30 เวลาไทย) + `workflow_dispatch`, `concurrency: { group: collect, cancel-in-progress: false }`, `timeout-minutes: 360`, Node 22, `npm ci`, `npm run collect` โดย env มาจาก secrets `DATABASE_URL`, `FEED_URLS`, `LINE_CHANNEL_ACCESS_TOKEN`, `ADMIN_LINE_USER_ID`, `HEALTHCHECK_URL`; ถ้า job ล้มด้วยเหตุอื่น (เช่น timeout) ขั้น `if: failure()` ส่ง LINE + ping `/fail`
+- backup.yml: `cron: '0 13 * * 0'` (อาทิตย์ 20:00 เวลาไทย) + `workflow_dispatch`, ติดตั้ง `postgresql-client` รุ่นตรงกับ Neon, `pg_dump -Fc` แล้ว `actions/upload-artifact` เก็บ 90 วัน, ping `BACKUP_HEALTHCHECK_URL`, ล้ม → LINE
+- keepalive.yml: `cron: '0 0 1 * *'` ถ้า commit ล่าสุดเก่ากว่า 45 วัน สร้าง empty commit ด้วย `GITHUB_TOKEN` (`permissions: contents: write`) กัน GitHub ปิด workflow ตั้งเวลา
+- ห้าม `echo` ค่าความลับใน log (log ของ repo สาธารณะใครก็เห็น)
+- คู่มือภาษาไทย: สมัคร GitHub/Neon, สร้างโปรเจกต์ Neon (ภูมิภาค AWS US East ใกล้ runner), ใช้ direct connection string (ไม่ใช่ pooler) + `sslmode=require`, สร้าง repo สาธารณะและ push, ใส่ Secrets, ทดสอบด้วย Run workflow, ตั้ง healthchecks
+
+Verification: `npm test`, `npm run typecheck`, ตรวจ YAML ด้วย parser, และ (ถ้ามี Postgres ในเครื่อง) รัน `npm run collect` กับฟีดตัวอย่างบน Postgres จริงเพื่อยืนยันว่าไม่มีความต่างจาก PGlite
