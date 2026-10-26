@@ -23,3 +23,15 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     healthcheckUrl: optional(env.HEALTHCHECK_URL),
   };
 }
+
+/**
+ * In production every alert path must be wired: the heartbeat is the only thing that notices a dead machine,
+ * and LINE is how the owner hears about a failed day.
+ */
+export function assertAlertsConfigured(c: Config): void {
+  const missing: string[] = [];
+  if (!c.lineChannelAccessToken) missing.push('LINE_CHANNEL_ACCESS_TOKEN');
+  if (!c.adminLineUserId) missing.push('ADMIN_LINE_USER_ID');
+  if (!c.healthcheckUrl) missing.push('HEALTHCHECK_URL');
+  if (missing.length) throw new Error(`alerts not configured, missing: ${missing.join(', ')} (set ALLOW_NO_ALERTS=1 only for local testing)`);
+}

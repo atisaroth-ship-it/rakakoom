@@ -1,7 +1,9 @@
 [Unit]
 Description=RakaKoom daily database backup to OCI Object Storage
-After=network-online.target postgresql.service
+After=network-online.target postgresql@16-main.service
+Requires=postgresql@16-main.service
 Wants=network-online.target
+OnFailure=rakakoom-failure@%n.service
 
 [Service]
 Type=oneshot

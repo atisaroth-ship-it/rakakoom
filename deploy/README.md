@@ -31,12 +31,14 @@ sudo bash /opt/rakakoom/deploy/setup.sh
 FEED_URLS="<ลิงก์ฟีดไฟล์ 1>,<ลิงก์ฟีดไฟล์ 2>"
 LINE_CHANNEL_ACCESS_TOKEN="..."
 ADMIN_LINE_USER_ID="U..."
-HEALTHCHECK_URL="https://hc-ping.com/<uuid>"
+HEALTHCHECK_URL="https://hc-ping.com/<uuid ของ check เก็บราคา>"
+BACKUP_HEALTHCHECK_URL="https://hc-ping.com/<uuid ของ check สำรองข้อมูล>"
 BACKUP_PAR_URL="https://objectstorage.ap-singapore-1.oraclecloud.com/p/<token>/n/<namespace>/b/<bucket>/o/"
 ```
-แล้วรัน `setup.sh` อีกรอบ ไฟล์นี้เป็นความลับ (สิทธิ์ 600) ห้ามคัดลอกไปที่อื่น
+ต้องใส่ LINE และ healthchecks ให้ครบ ไม่อย่างนั้นระบบเก็บราคาจะไม่ยอมเริ่ม (กันการทำงานแบบไม่มีใครรู้เวลาพัง) แล้วรัน `setup.sh` อีกรอบ ไฟล์นี้เป็นความลับ (สิทธิ์ 600) ห้ามคัดลอกไปที่อื่น
 
 ## 5. ที่เก็บสำรองข้อมูล
+- ใน healthchecks.io สร้าง check ที่สองสำหรับสำรองข้อมูล (รอบ 1 วัน ผ่อนผัน 6 ชั่วโมง) → ใส่เป็น `BACKUP_HEALTHCHECK_URL`
 - Storage → Buckets → สร้าง bucket `rakakoom-backups` (Standard, private)
 - Lifecycle rule: Delete objects older than 14 days
 - Pre-Authenticated Request: ระดับ bucket, อนุญาต "Permit object writes", วันหมดอายุไกล ๆ (เช่น 2 ปี — **ตั้งเตือนในปฏิทินให้ต่ออายุ**) → ใส่เป็น `BACKUP_PAR_URL`
@@ -58,9 +60,13 @@ BACKUP_PAR_URL="https://objectstorage.ap-singapore-1.oraclecloud.com/p/<token>/n
    sudo -u rakakoom psql restore_check -c "select count(*) from price_changes"
    ```
    จำนวนต้องเท่ากับฐานข้อมูลจริง แล้ว `dropdb restore_check`
-4. ดูตารางเวลา: `systemctl list-timers 'rakakoom-*'`
+4. ตรวจว่าฟีดส่ง `Last-Modified` มาไหม (ใช้ตรวจว่าฟีดอัปเดตแล้ว): `sudo -u rakakoom psql rakakoom -c "select feed_date, last_modified from feed_runs order by id desc limit 1"` ถ้าเป็น `[null, null]` ระบบจะพึ่งได้แค่การไม่รันก่อน 10:00 — จดไว้ในข้อ 7
+5. ทดสอบการแจ้งเตือนเมื่อโปรแกรมตาย: `sudo systemctl start rakakoom-failure@test.service` → แม่หมอต้องได้ข้อความ LINE "หยุดทำงานผิดปกติ"
+6. healthchecks.io ต้องแสดงว่าได้รับสัญญาณ success จากทั้งสอง check
+7. ดูตารางเวลา: `systemctl list-timers 'rakakoom-*'`
 
-## 7. ผลจากรอบจริงครั้งแรก (กรอกหลังติดตั้ง)
+## 7. ผลจากรอบจริงครั้งแรก
+- ฟีดส่ง Last-Modified หรือไม่: _ (กรอกหลังติดตั้ง)
 - เวลาที่ใช้ต่อรอบ: _
 - ขนาดฐานข้อมูล (`select pg_size_pretty(pg_database_size('rakakoom'))`): _
 - คาดว่าดิสก์ 150 GB พอประมาณ: _ วัน

@@ -1,0 +1,8 @@
+[Unit]
+Description=Alert the owner that %i failed
+
+[Service]
+Type=oneshot
+User=rakakoom
+EnvironmentFile=/etc/rakakoom.env
+ExecStart=/bin/bash /opt/rakakoom/deploy/notify-failure.sh %i
