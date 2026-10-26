@@ -1,6 +1,6 @@
 # ตั้งค่าระบบเก็บราคาบน GitHub Actions + Neon (ฟรี ไม่ต้องผูกบัตร)
 
-ต้องเตรียมก่อน: LINE channel access token, LINE user ID ของแม่หมอ, ลิงก์ฟีดทั้ง 2 ไฟล์ (ดูแผนข้อ P2–P4)
+ต้องเตรียมก่อน: LINE channel access token, LINE user ID ของแม่หมอ, ลิงก์ฟีด (มีลิงก์เดียว) (ดูแผนข้อ P2–P4)
 
 ## 1. Neon (ฐานข้อมูล)
 1. สมัครที่ neon.com (ใช้บัญชี Google หรือ GitHub ได้ ไม่ต้องใช้บัตร)
@@ -24,7 +24,7 @@
 | ชื่อ | ค่า |
 |---|---|
 | `DATABASE_URL` | connection string จาก Neon (ข้อ 1.3) |
-| `FEED_URLS` | ลิงก์ฟีดไฟล์ 1 และ 2 คั่นด้วยจุลภาค |
+| `FEED_URLS` | ลิงก์ฟีด (ใช้ `scripts/set-feed-urls.ps1` วางทีละลิงก์) |
 | `LINE_CHANNEL_ACCESS_TOKEN` | token ของ LINE OA |
 | `ADMIN_LINE_USER_ID` | user ID ของแม่หมอ (ขึ้นต้นด้วย `U`) |
 | `HEALTHCHECK_URL` | URL ping ของ check `rakakoom-collect` |
@@ -37,7 +37,7 @@
 
 ## 4. ทดสอบ (ทำตามลำดับ)
 1. **การแจ้งเตือนเมื่อล้ม:** แก้ secret `FEED_URLS` ชั่วคราวเป็น `https://example.invalid/x` → Actions → collect prices → **Run workflow** (ต้องเป็นหลัง 10:00 เวลาไทย) → แม่หมอต้องได้ LINE "ล้มเหลว" **ข้อความเดียว** และ healthchecks ขึ้น fail → แก้ secret กลับเป็นค่าจริง
-2. **เก็บราคาจริง:** Run workflow อีกครั้ง → รอจนจบ (อาจหลายสิบนาที) → เปิด log ขั้น "Collect today's prices" บรรทัดสุดท้ายต้องมี `"status":"success"` และ `"rowsRead"` ประมาณ 2,000,000
+2. **เก็บราคาจริง:** Run workflow อีกครั้ง → รอจนจบ (อาจหลายสิบนาที) → เปิด log ขั้น "Collect today's prices" บรรทัดสุดท้ายต้องมี `"status":"success"` และ `"rowsRead"` ประมาณ 1,000,000
 3. **ฟีดส่ง Last-Modified ไหม:** Neon → SQL Editor → `select feed_date, status, rows_read, rows_kept, last_modified, finished_at - started_at as took from feed_runs order by id desc limit 3;` ถ้า `last_modified` เป็น `[null, null]` ระบบจะพึ่งได้แค่การไม่รันก่อน 10:00 — จดไว้ในข้อ 5
 4. **สำรองข้อมูล:** Actions → backup database → Run workflow → หน้าผลการรันต้องมี artifact `rakakoom-<วันที่>` และ healthchecks `rakakoom-backup` ขึ้น up
 5. **ลองกู้ข้อมูล:** ดาวน์โหลด artifact → Neon สร้าง branch ใหม่ชื่อ `restore-check` → `pg_restore --no-owner -d "<connection string ของ branch นั้น>" rakakoom-<วันที่>.dump` → นับ `select count(*) from price_changes` ให้เท่าของจริง → ลบ branch

@@ -7,7 +7,7 @@ $gh = 'C:\Program Files\GitHub CLI\gh.exe'
 
 $secrets = @(
   @{ Name = 'DATABASE_URL';              Hint = 'Neon > Connect (ปิด Connection pooling) > Copy snippet ของ connection string' },
-  @{ Name = 'FEED_URLS';                 Hint = 'ลิงก์ฟีดไฟล์ 1 และ 2 คั่นด้วยจุลภาค (Shopee Affiliate > รายการ feed สินค้า > ดูลิงก์ > คัดลอกลิงก์ทั้งหมด)' },
+  @{ Name = 'FEED_URLS';                 Hint = 'แนะนำให้กด Enter ข้าม แล้วใช้ scripts\set-feed-urls.ps1 แทน (วางทีละลิงก์ ไม่พลาดง่าย)' },
   @{ Name = 'LINE_CHANNEL_ACCESS_TOKEN'; Hint = 'LINE Developers > channel ของ OA > Messaging API > Channel access token' },
   @{ Name = 'ADMIN_LINE_USER_ID';        Hint = 'LINE Developers > Basic settings > Your user ID (ขึ้นต้นด้วย U)' },
   @{ Name = 'HEALTHCHECK_URL';           Hint = 'healthchecks.io > check rakakoom-collect > Ping URL' },
