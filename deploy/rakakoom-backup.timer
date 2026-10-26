@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily RakaKoom database backup (19:00 Bangkok, after the collector's last slot)
+
+[Timer]
+OnCalendar=*-*-* 12:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

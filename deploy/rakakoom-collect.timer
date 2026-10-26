@@ -1,0 +1,10 @@
+[Unit]
+Description=Run RakaKoom collector after the feed refreshes (~09:20 Bangkok)
+
+[Timer]
+# 10:30, 12:30, 14:30, 16:30 Bangkok. A run that finds today already collected exits immediately.
+OnCalendar=*-*-* 03:30,05:30,07:30,09:30 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

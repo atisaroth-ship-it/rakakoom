@@ -1,0 +1,14 @@
+[Unit]
+Description=RakaKoom daily Shopee feed price collector
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=rakakoom
+WorkingDirectory=/opt/rakakoom
+EnvironmentFile=/etc/rakakoom.env
+ExecStart=/usr/bin/npm run --silent collect
+# Two ~4 GB files plus the apply step; generous ceiling so a slow day is not killed.
+TimeoutStartSec=5h
+Nice=5

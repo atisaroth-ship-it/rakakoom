@@ -1,0 +1,11 @@
+[Unit]
+Description=RakaKoom daily database backup to OCI Object Storage
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=rakakoom
+EnvironmentFile=/etc/rakakoom.env
+ExecStart=/bin/bash /opt/rakakoom/deploy/backup.sh
+TimeoutStartSec=2h
