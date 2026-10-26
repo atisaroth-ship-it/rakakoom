@@ -4,7 +4,7 @@
 
 **Goal:** ดาวน์โหลดฟีดสินค้า Shopee Affiliate ทุกวัน เก็บราคาระดับ variant ของสินค้าที่มีแบรนด์ลง Postgres เป็นประวัติที่ห้ามขาดช่วง และแจ้งเตือนแม่หมอทันทีเมื่อเก็บไม่สำเร็จ ให้ใช้งานจริงได้ก่อน 11 พ.ย. 2026
 
-**Architecture:** โปรแกรม Node.js/TypeScript ตัวเดียว (`npm run collect`) อ่านไฟล์ CSV จาก HTTP แบบสตรีมทีละแถว แปลงแถวเป็นข้อมูลสินค้า กรองเฉพาะสินค้ามีแบรนด์ แล้วใส่ตาราง staging เป็นชุด เมื่ออ่านครบทุกไฟล์จึงนำ staging ไปอัปเดตตารางหลักในทรานแซกชันเดียว (สำเร็จทั้งหมดหรือไม่เปลี่ยนอะไรเลย) systemd timer บนเครื่อง Oracle Cloud Always Free สั่งรันวันละหลายรอบ รอบที่พบว่าวันนี้สำเร็จแล้วจะข้ามไป
+**Architecture:** โปรแกรม Node.js/TypeScript ตัวเดียว (`npm run collect`) อ่านไฟล์ CSV จาก HTTP แบบสตรีมทีละแถว แปลงแถวเป็นข้อมูลสินค้า กรองเฉพาะสินค้ามีแบรนด์ แล้วใส่ตาราง staging เป็นชุด เมื่ออ่านครบทุกไฟล์จึงนำ staging ไปอัปเดตตารางหลักในทรานแซกชันเดียว (สำเร็จทั้งหมดหรือไม่เปลี่ยนอะไรเลย) systemd timer บนเครื่อง Google Cloud e2-micro (Free Tier) สั่งรันวันละหลายรอบ รอบที่พบว่าวันนี้สำเร็จแล้วจะข้ามไป
 
 **Tech Stack:** Node.js 22 LTS, TypeScript (strict), `csv-parse`, `pg`, Vitest, `@electric-sql/pglite` (Postgres ในหน่วยความจำ สำหรับเทสต์โดยไม่ต้องใช้ Docker), PostgreSQL 16, systemd, Ubuntu 24.04 ARM
 
@@ -20,7 +20,7 @@
 - ห้ามลบประวัติราคา (`price_changes`) ไม่ว่ากรณีใด
 - บันทึกราคาใหม่เฉพาะเมื่อราคาต่างจากราคาล่าสุดก่อนหน้า และบันทึก "วันนี้เก็บสำเร็จ" แยกใน `feed_runs` (เพื่อแยก "ราคาไม่เปลี่ยน" ออกจาก "วันนั้นไม่ได้เก็บ")
 - ข้อความแจ้งเตือนเป็นภาษาไทย ขึ้นต้นด้วย `RakaKoom:`
-- โฮสต์ต้องฟรี (Oracle Cloud Always Free: 2 OCPU / 12 GB RAM / ดิสก์รวม 200 GB)
+- โฮสต์ต้องฟรี (Google Cloud e2-micro: RAM 1 GB / standard persistent disk 30 GB / ภูมิภาค us-west1, us-central1 หรือ us-east1 / Cloud Storage 5 GB) — เดิมเป็น Oracle Cloud แต่สมัครไม่ผ่าน
 
 ## Review Focus
 
@@ -34,7 +34,7 @@
 
 ## สิ่งที่ต้องทำก่อนเริ่ม (ไม่ใช่งานเขียนโค้ด)
 
-- [ ] **P1 (แม่หมอ):** สมัคร Oracle Cloud ด้วยตัวเอง (ใช้บัตรยืนยันตัวตน) เลือก home region สิงคโปร์ (`ap-singapore-1`) — จำเป็นก่อน Task 7
+- [ ] **P1 (แม่หมอ):** สมัคร Google Cloud ด้วยตัวเอง (ผูกบัตรกับ billing account) และตั้งงบเตือน 1 USD — จำเป็นก่อน Task 7 (เดิมเป็น Oracle Cloud แต่สมัครไม่ผ่าน)
 - [ ] **P2 (ตรวจลิงก์ฟีด):** วันที่ 27 ต.ค. เปิดแดชบอร์ด → รายการ feed สินค้า → "Product Feed All Global Category" → ดูลิงก์ แล้วเทียบกับลิงก์ของวันที่ 26 ต.ค. ถ้า**เหมือนเดิม** ใส่ลิงก์ทั้งหมดใน `FEED_URLS` ได้ครั้งเดียว ถ้า**เปลี่ยนทุกวัน** ให้หยุดและถามแม่หมอ ห้ามทำระบบล็อกอินแดชบอร์ดอัตโนมัติ (spec ข้อ 9)
 - [ ] **P3 (แม่หมอ):** หา LINE channel access token (LINE Developers → channel ของ OA → Messaging API) และ user ID ของแม่หมอ (หน้า Basic settings → "Your user ID") สำหรับแจ้งเตือน
 - [ ] **P4 (แม่หมอ):** สมัคร healthchecks.io แบบฟรี สร้าง check รอบ 1 วัน ระยะผ่อนผัน 8 ชั่วโมง ตั้งให้ส่งอีเมลหรือ LINE ไปที่แม่หมอ
@@ -57,7 +57,7 @@
   - `createTestDb(): Promise<Db>` ใน `tests/helpers/testDb.ts` (PGlite ในหน่วยความจำ — Task 3 จะเพิ่มการรัน migration; ใน Task 1 ยังไม่ต้องมี)
   - `bangkokDate(now: Date): string` ใน `src/time.ts` → `YYYY-MM-DD` ตามเวลาไทย
 
-- [ ] **Step 1:** `git init` สร้าง `.gitignore` (`node_modules/`, `dist/`, `.env`, `*.dump`) และ `.env.example` ที่มีบรรทัด `DATABASE_URL=`, `FEED_URLS=`, `LINE_CHANNEL_ACCESS_TOKEN=`, `ADMIN_LINE_USER_ID=`, `HEALTHCHECK_URL=`, `BACKUP_PAR_URL=`
+- [ ] **Step 1:** `git init` สร้าง `.gitignore` (`node_modules/`, `dist/`, `.env`, `*.dump`) และ `.env.example` ที่มีบรรทัด `DATABASE_URL=`, `FEED_URLS=`, `LINE_CHANNEL_ACCESS_TOKEN=`, `ADMIN_LINE_USER_ID=`, `HEALTHCHECK_URL=`, `BACKUP_BUCKET=`, `BACKUP_KEEP=2`, `BACKUP_HEALTHCHECK_URL=`
 - [ ] **Step 2:** `npm init -y` แล้วติดตั้ง `csv-parse pg` และ dev deps `typescript tsx vitest @electric-sql/pglite @types/node @types/pg csv-stringify` ตั้ง scripts: `"test": "vitest run"`, `"collect": "tsx src/collect/cli.ts"`, `"migrate": "tsx src/db/migrateCli.ts"`, `"typecheck": "tsc --noEmit"` และ `"engines": { "node": ">=22" }`
 - [ ] **Step 3: เขียนเทสต์ที่ต้องล้ม**
 
@@ -285,29 +285,32 @@ test('ping reports success and fail', async () => { /* success → 'https://hc/a
 
 ---
 
-### Task 7: ติดตั้งบน Oracle Cloud, ตั้งเวลา และสำรองข้อมูล
+### Task 7: ติดตั้งบน Google Cloud e2-micro, ตั้งเวลา และสำรองข้อมูล
 
 **Files:**
-- Create: `deploy/README.md` (ขั้นตอนทีละข้อเป็นภาษาไทย), `deploy/setup.sh`, `deploy/rakakoom-collect.service`, `deploy/rakakoom-collect.timer`, `deploy/backup.sh`, `deploy/rakakoom-backup.service`, `deploy/rakakoom-backup.timer`, `deploy/postgresql-tuning.conf`
+- Create: `deploy/README.md` (ขั้นตอนทีละข้อเป็นภาษาไทย), `deploy/setup.sh`, `deploy/rakakoom-collect.service`, `deploy/rakakoom-collect.timer`, `deploy/backup.sh`, `deploy/rakakoom-backup.service`, `deploy/rakakoom-backup.timer`, `deploy/postgresql-tuning.conf`, `deploy/notify-failure.sh`, `deploy/rakakoom-failure@.service`
 
 **Interfaces:**
 - Consumes: `npm run collect`, `npm run migrate`
 
 ค่าที่กำหนด:
-- เครื่อง: `VM.Standard.A1.Flex` 2 OCPU / 12 GB, Ubuntu 24.04 ARM, boot volume 150 GB (เหลือโควตาไว้ 50 GB)
-- Postgres 16, `shared_buffers = 3GB`, `effective_cache_size = 6GB`, `work_mem = 64MB`, `maintenance_work_mem = 512MB` — ทำให้ใช้หน่วยความจำเกิน 20% ตลอด ไม่เข้าเกณฑ์ "เครื่องว่าง" ของ Oracle (spec ข้อ 8)
-- environment อยู่ที่ `/etc/rakakoom.env` สิทธิ์ `600` เจ้าของ `rakakoom`
-- เวลาเก็บ: `OnCalendar=*-*-* 03:30,05:30,07:30,09:30 UTC` (= 10:30, 12:30, 14:30, 16:30 เวลาไทย หลังฟีดอัปเดตราว 09:20) `Persistent=true` รอบที่สำเร็จแล้วจะข้าม (Task 5)
-- สำรองข้อมูล: `OnCalendar=*-*-* 12:00 UTC`, `pg_dump -Fc` แล้ว `curl -T` ขึ้น OCI Object Storage ผ่าน pre-authenticated request (`BACKUP_PAR_URL`) ชื่อไฟล์ `rakakoom-YYYY-MM-DD.dump` ตั้ง lifecycle rule ใน bucket ให้ลบไฟล์อายุเกิน 14 วัน — **ก่อนตั้งค่า ให้ตรวจในหน้า Always Free ว่า Object Storage ยังฟรีและได้กี่ GB** ถ้าไม่ฟรี ให้หยุดและถามแม่หมอ
-- `backup.sh` ล้มเหลว → ส่ง LINE แจ้งเตือนด้วย `curl` ไปยัง push API (ใช้ token/userId จาก env เดียวกัน) ข้อความ `RakaKoom: สำรองฐานข้อมูลวันที่ {date} ล้มเหลว`
+- เครื่อง: `e2-micro` (RAM 1 GB) ในภูมิภาค us-west1 / us-central1 / us-east1, Ubuntu 24.04 LTS x86_64, **standard** persistent disk 30 GB, access scope Storage: Read Write และ service account มีสิทธิ์ Storage Object Admin
+- swap file 2 GB (`/swapfile`) และ Node heap `--max-old-space-size=384`
+- Postgres 16, `shared_buffers = 128MB`, `effective_cache_size = 512MB`, `work_mem = 4MB`, `maintenance_work_mem = 64MB`, `max_wal_size = 2GB` (ดิสก์เล็ก)
+- environment อยู่ที่ `/etc/rakakoom.env` สิทธิ์ `600` เจ้าของ `rakakoom` (systemd อ่านเอง ห้ามให้ bash source ไฟล์นี้)
+- เวลาเก็บ: `OnCalendar=*-*-* 03:30,05:30,07:30,09:30 UTC` (= 10:30, 12:30, 14:30, 16:30 เวลาไทย หลังฟีดอัปเดตราว 09:20) `Persistent=true` รอบที่สำเร็จแล้วจะข้าม (Task 5) `TimeoutStartSec=8h` เพราะเครื่อง shared-core ช้า
+- สำรองข้อมูล: `OnCalendar=*-*-* 12:00 UTC` รอจนรอบเก็บราคาจบก่อน (`ExecStartPre`), `pg_dump -Fc | gcloud storage cp -` ขึ้น bucket Cloud Storage (`BACKUP_BUCKET`, regional ภูมิภาคเดียวกับเครื่อง, Standard) โดยไม่พักไฟล์ลงดิสก์ อัปโหลดชื่อ `.partial` ก่อนแล้วเปลี่ยนชื่อเป็น `rakakoom-YYYY-MM-DD.dump` เมื่อสำเร็จ เก็บไว้ `BACKUP_KEEP` ไฟล์ล่าสุด (ค่าเริ่ม 2 ให้อยู่ในโควตาฟรี 5 GB)
+- `backup.sh` ล้มเหลว → ส่ง LINE แจ้งเตือนด้วย `curl` ไปยัง push API ข้อความ `RakaKoom: สำรองฐานข้อมูลวันที่ {date} ล้มเหลว — {เหตุผล}` และ ping `BACKUP_HEALTHCHECK_URL/fail`; สำเร็จ → ping `BACKUP_HEALTHCHECK_URL`
+- ทั้งสอง service มี `OnFailure=rakakoom-failure@%n.service` (แจ้งเตือนเมื่อโปรเซสตาย/ถูก kill) และ `After=/Requires=postgresql@16-main.service`
+- ตั้งงบเตือน 1 USD ใน Billing และเช็คหน้า Billing หลังใช้ 2–3 วัน (ค่า IP สาธารณะยังยืนยันไม่ได้ว่าฟรี)
 
-- [ ] **Step 1:** เขียนไฟล์ใน `deploy/` และ `deploy/README.md` (สร้างเครื่อง, เปิดเฉพาะพอร์ต SSH, ติดตั้ง Node 22 + Postgres 16, สร้างผู้ใช้/ฐานข้อมูล, clone, `npm ci`, ใส่ env, `npm run migrate`, เปิด timer, ตั้ง bucket + lifecycle, ใส่ URL healthchecks)
+- [ ] **Step 1:** เขียนไฟล์ใน `deploy/` และ `deploy/README.md` (งบเตือน, bucket, สร้างเครื่องตามค่าข้างบน, ไม่เปิด HTTP/HTTPS, ติดตั้ง swap + Node 22 + Postgres 16 + gcloud, สร้างผู้ใช้/ฐานข้อมูล, คัดลอกโค้ด, `npm ci`, ใส่ env, `npm run migrate`, เปิด timer, ใส่ URL healthchecks ทั้งสอง check)
 - [ ] **Step 2:** รัน `bash -n deploy/*.sh` และ `systemd-analyze verify deploy/*.service deploy/*.timer` (บนเครื่องเซิร์ฟเวอร์) → ไม่มี error
 - [ ] **Step 3: ทดสอบจริงบนเซิร์ฟเวอร์** (หลัง P1–P4 เสร็จ): `sudo systemctl start rakakoom-collect.service` แล้วรอจนจบ → `journalctl -u rakakoom-collect` แสดง JSON ที่ `"status":"success"`; `psql -c "select feed_date,status,rows_read,rows_kept from feed_runs"` มี 1 แถว success; `rows_read` ประมาณ 2,000,000
 - [ ] **Step 4: ทดสอบว่าการแจ้งเตือนทำงาน:** ตั้ง `FEED_URLS` ชั่วคราวเป็น URL ที่ไม่มีอยู่ → รัน service → แม่หมอได้ข้อความ LINE "ล้มเหลว" และ healthchecks แสดงสถานะ fail → คืนค่า env เดิม
 - [ ] **Step 5:** รัน `sudo systemctl start rakakoom-backup.service` → มีไฟล์ dump ใน bucket; ลองกู้คืนลงฐานข้อมูลชั่วคราวด้วย `pg_restore` แล้วนับแถว `price_changes` ให้ตรงกับต้นฉบับ
-- [ ] **Step 6:** วัดเวลาที่ใช้และขนาดฐานข้อมูลหลังรอบแรก (`select pg_size_pretty(pg_database_size('rakakoom'))`) แล้วจดลง `deploy/README.md` เพื่อคาดว่าดิสก์ 150 GB พอกี่วัน
-- [ ] **Step 7:** Commit `chore: oracle cloud deployment and backups`
+- [ ] **Step 6:** วัดเวลาที่ใช้และขนาดฐานข้อมูลหลังรอบแรก (`select pg_size_pretty(pg_database_size('rakakoom'))`) ขนาดไฟล์สำรอง และ `df -h /` แล้วจดลง `deploy/README.md` เพื่อคาดว่าดิสก์ 30 GB และโควตา Cloud Storage 5 GB พอกี่วัน
+- [ ] **Step 7:** Commit `chore: google cloud deployment and backups`
 
 ---
 
