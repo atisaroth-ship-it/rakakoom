@@ -1,4 +1,5 @@
 import type { Db } from '../db/db.js';
+import { databaseSizeBytes } from '../db/size.js';
 import { applyRun, clearStaging, stageItems } from '../db/store.js';
 import type { FeedRecord } from '../feed/columns.js';
 import type { FeedMeta } from '../feed/openFeed.js';
@@ -16,6 +17,8 @@ export interface RunDeps {
   batchSize?: number;
   /** Categories to collect; omitted = every category. */
   scope?: CategoryScope;
+  /** Alert when the database reaches SIZE_ALERT_RATIO of this. */
+  dbSizeLimitBytes?: number;
 }
 
 export interface RunResult {
@@ -25,6 +28,7 @@ export interface RunResult {
   rowsKept: number;
   skipped: Partial<Record<SkipReason, number>>;
   error?: string;
+  dbSizeBytes?: number;
 }
 
 /** The feed refreshes around 09:20 Bangkok; earlier runs (e.g. a catch-up at boot) would take yesterday's file. */
@@ -38,6 +42,8 @@ const FILE_RATIO = 0.8;
 /** Malformed rows above this share of rows read flag the day. */
 const MALFORMED_RATIO = 0.05;
 const BASELINE_DAYS = 7;
+const SIZE_ALERT_RATIO = 0.8;
+const MB = 1024 * 1024;
 /** A 'running' row without a heartbeat for this long belongs to a dead process. */
 const STALE_RUN = "interval '3 hours'";
 
@@ -131,6 +137,18 @@ export async function runDaily(deps: RunDeps): Promise<RunResult> {
     result.status = reasons.length ? 'suspect' : 'success';
     await finish(db, runId, result, fileRows, lastModified);
     if (reasons.length) await alert(`RakaKoom: เก็บราคาวันที่ ${feedDate} ข้อมูลผิดปกติ — ${reasons.join('; ')}`);
+    if (deps.dbSizeLimitBytes) {
+      // The day is already saved; a failing size check must not turn it into a failed run.
+      try {
+        result.dbSizeBytes = await databaseSizeBytes(db);
+        const ratio = result.dbSizeBytes / deps.dbSizeLimitBytes;
+        if (ratio >= SIZE_ALERT_RATIO) {
+          await alert(`RakaKoom: ฐานข้อมูลใช้ไป ${Math.round(result.dbSizeBytes / MB)} MB จาก ${Math.round(deps.dbSizeLimitBytes / MB)} MB (${Math.round(ratio * 100)}%) ใกล้เต็มแล้ว`);
+        }
+      } catch (e) {
+        console.error('database size check failed', e);
+      }
+    }
     await ping('success');
   } catch (e) {
     const waiting = e instanceof FeedNotRefreshed && bangkokHour(now) < LAST_SLOT_HOUR;

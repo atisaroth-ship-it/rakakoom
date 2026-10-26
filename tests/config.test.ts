@@ -16,3 +16,8 @@ test('assertAlertsConfigured names every missing alert setting', () => {
   const ok = loadConfig({ DATABASE_URL: 'postgres://x', FEED_URLS: 'https://a/1', LINE_CHANNEL_ACCESS_TOKEN: 't', ADMIN_LINE_USER_ID: 'U', HEALTHCHECK_URL: 'https://hc/x' });
   expect(() => assertAlertsConfigured(ok)).not.toThrow();
 });
+
+test('DB_SIZE_LIMIT_MB defaults to 1024', () => {
+  expect(loadConfig({ DATABASE_URL: 'postgres://x', FEED_URLS: 'https://a/1' }).dbSizeLimitBytes).toBe(1024 * 1024 * 1024);
+  expect(loadConfig({ DATABASE_URL: 'postgres://x', FEED_URLS: 'https://a/1', DB_SIZE_LIMIT_MB: '500' }).dbSizeLimitBytes).toBe(500 * 1024 * 1024);
+});

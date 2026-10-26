@@ -187,3 +187,18 @@ test('out-of-scope rows are skipped but not counted as malformed', async () => {
   expect(r).toMatchObject({ status: 'success', rowsKept: 10, skipped: { out_of_scope: 5 } });
   expect(d.alert).not.toHaveBeenCalled();
 });
+
+test('alerts when the database reaches 80% of the limit', async () => {
+  const size = Number((await db.query<{ n: string }>('select pg_database_size(current_database()) as n')).rows[0]!.n);
+  const d = deps({ openFeed: feeds({ u1: many(3) }), dbSizeLimitBytes: Math.floor(size / 0.85) });
+  const r = await runDaily(d);
+  expect(r.status).toBe('success');
+  expect(r.dbSizeBytes).toBeGreaterThan(0);
+  expect(d.alert).toHaveBeenCalledWith(expect.stringMatching(/^RakaKoom: ฐานข้อมูลใช้ไป \d+ MB จาก \d+ MB \(\d+%\) ใกล้เต็มแล้ว$/));
+});
+
+test('no size alert below 80%', async () => {
+  const d = deps({ openFeed: feeds({ u1: many(3) }), dbSizeLimitBytes: 100 * 1024 * 1024 * 1024 });
+  await runDaily(d);
+  expect(d.alert).not.toHaveBeenCalled();
+});

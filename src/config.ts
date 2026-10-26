@@ -4,6 +4,8 @@ export interface Config {
   lineChannelAccessToken: string | null;
   adminLineUserId: string | null;
   healthcheckUrl: string | null;
+  /** Storage limit of the database plan (Neon free: 1 GB per project). */
+  dbSizeLimitBytes: number;
 }
 
 const optional = (v: string | undefined): string | null => (v && v.trim() ? v.trim() : null);
@@ -21,6 +23,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     lineChannelAccessToken: optional(env.LINE_CHANNEL_ACCESS_TOKEN),
     adminLineUserId: optional(env.ADMIN_LINE_USER_ID),
     healthcheckUrl: optional(env.HEALTHCHECK_URL),
+    dbSizeLimitBytes: Number(optional(env.DB_SIZE_LIMIT_MB) ?? 1024) * 1024 * 1024,
   };
 }
 
