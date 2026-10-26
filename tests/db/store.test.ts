@@ -6,7 +6,8 @@ import { makeFeedRecord } from '../helpers/feedRecord.js';
 import { createTestDb } from '../helpers/testDb.js';
 
 let db: Db;
-beforeEach(async () => { db = await createTestDb(); });
+let collectedDays: string[] = [];
+beforeEach(async () => { db = await createTestDb(); collectedDays = []; });
 afterEach(async () => { await db.close(); });
 
 function item(overrides: Record<string, string> = {}): ParsedItem {
@@ -16,11 +17,19 @@ function item(overrides: Record<string, string> = {}): ParsedItem {
 }
 
 let nextRun = 1;
+/** Simulates one collected day; the previous collected day is the latest earlier date passed here. */
 async function runDay(feedDate: string, items: ParsedItem[]) {
   const runId = nextRun++;
+  const prev = collectedDays.filter(d => d < feedDate).sort().at(-1) ?? null;
+  if (!collectedDays.includes(feedDate)) collectedDays.push(feedDate);
   await stageItems(db, runId, items);
-  return db.transaction(tx => applyRun(tx, runId, feedDate));
+  return db.transaction(tx => applyRun(tx, runId, feedDate, prev));
 }
+
+const spans = async (modelId = 445195501093) =>
+  (await db.query<{ start: string; last: string; price: number }>(
+    `select to_char(effective_date, 'YYYY-MM-DD') as start, to_char(last_seen, 'YYYY-MM-DD') as last, price_satang as price
+       from price_changes where model_id = $1 order by effective_date`, [modelId])).rows;
 
 const history = async () =>
   (await db.query<{ model_id: number; effective_date: string; price_satang: number }>(
@@ -78,6 +87,33 @@ test('stores shop and item fields', async () => {
   expect(shop.rows).toEqual([{ shop_id: 101487342, shop_name: 'กัปตัน เอกสตีล', shop_rating: '4.93', penalty_score: '0', is_official: false, is_preferred: true, holiday_mode: false }]);
   const it = await db.query<{ brand: string }>('select brand from items');
   expect(it.rows).toEqual([{ brand: 'Ingco(อิงโก้)' }]);
+});
+
+test('consecutive days at the same price extend one span', async () => {
+  await runDay('2026-10-27', [item()]);
+  await runDay('2026-10-28', [item()]);
+  expect(await spans()).toEqual([{ start: '2026-10-27', last: '2026-10-28', price: 36000 }]);
+});
+
+test('a day missing from the feed breaks the span even at the same price', async () => {
+  const other = item({ itemid: '7', model_ids: '70' });
+  await runDay('2026-10-27', [item(), other]);
+  await runDay('2026-10-28', [other]);
+  await runDay('2026-10-29', [item(), other]);
+  expect(await spans()).toEqual([
+    { start: '2026-10-27', last: '2026-10-27', price: 36000 },
+    { start: '2026-10-29', last: '2026-10-29', price: 36000 },
+  ]);
+});
+
+test('same-day rerun with a new price undoes the earlier extension', async () => {
+  await runDay('2026-10-27', [item()]);
+  await runDay('2026-10-28', [item()]);
+  await runDay('2026-10-28', [item({ model_prices: '350.0' })]);
+  expect(await spans()).toEqual([
+    { start: '2026-10-27', last: '2026-10-27', price: 36000 },
+    { start: '2026-10-28', last: '2026-10-28', price: 35000 },
+  ]);
 });
 
 test('odd numeric values do not abort the apply', async () => {

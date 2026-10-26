@@ -67,7 +67,7 @@ export async function runDaily(deps: RunDeps): Promise<RunResult> {
     await stageItems(db, runId, batch);
     if (result.rowsKept === 0) throw new Error(`no branded items in feed (${result.rowsRead} rows read)`);
 
-    await db.transaction(tx => applyRun(tx, runId, feedDate));
+    await db.transaction(tx => applyRun(tx, runId, feedDate, prev?.feed_date ?? null));
 
     const suspect = prev !== undefined && result.rowsKept < SUSPECT_RATIO * Number(prev.rows_kept);
     result.status = suspect ? 'suspect' : 'success';

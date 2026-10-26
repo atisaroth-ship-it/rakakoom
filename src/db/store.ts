@@ -34,7 +34,7 @@ export async function clearStaging(db: Db, runId: number): Promise<void> {
  * Move a run's staging rows into the main tables. Must be called inside db.transaction.
  * When a row repeats within the run, the last staged one wins.
  */
-export async function applyRun(db: Db, runId: number, feedDate: string): Promise<ApplyStats> {
+export async function applyRun(db: Db, runId: number, feedDate: string, prevDate: string | null): Promise<ApplyStats> {
   await db.query(
     `create temp table run_items on commit drop as
        select distinct on (item_id) item_id, data from staging_items where run_id = $1 order by item_id, seq desc`,
@@ -96,30 +96,48 @@ export async function applyRun(db: Db, runId: number, feedDate: string): Promise
     [feedDate],
   );
 
-  // Latest price before today for each variant in this run.
+  // price_changes rows are spans: a price seen on every collected day from effective_date to last_seen.
+  // A span only grows when the variant was also seen on the previous collected day; any gap starts a new span,
+  // so "not in the feed" is never mistaken for "price unchanged".
+
+  // Undo extensions made by an earlier run today (they were extended from prevDate).
+  if (prevDate) {
+    await db.query(
+      `update price_changes set last_seen = $2::date
+        where last_seen = $1::date and effective_date < $1::date`,
+      [feedDate, prevDate],
+    );
+  }
+  await db.query(
+    `delete from price_changes pc using run_variants rv
+      where pc.model_id = rv.model_id and pc.effective_date = $1::date`,
+    [feedDate],
+  );
+
   await db.query(
     `create temp table run_prev on commit drop as
-       select rv.model_id, rv.price_satang as today, p.price_satang as prev
+       select rv.model_id, rv.price_satang as today, p.effective_date as span_start, p.price_satang as prev, p.last_seen as prev_last
          from run_variants rv
          left join lateral (
-           select pc.price_satang from price_changes pc
+           select pc.effective_date, pc.price_satang, pc.last_seen from price_changes pc
             where pc.model_id = rv.model_id and pc.effective_date < $1::date
             order by pc.effective_date desc limit 1
          ) p on true`,
     [feedDate],
   );
-  // A same-day rerun whose price is back to the previous day's value is no longer a change for today.
   await db.query(
-    `delete from price_changes pc using run_prev rp
-      where pc.model_id = rp.model_id and pc.effective_date = $1::date and rp.prev = rp.today`,
-    [feedDate],
+    `update price_changes pc set last_seen = $1::date
+       from run_prev rp
+      where pc.model_id = rp.model_id and pc.effective_date = rp.span_start
+        and rp.prev = rp.today and rp.prev_last = $2::date`,
+    [feedDate, prevDate],
   );
   const changes = await db.query(
-    `insert into price_changes (model_id, effective_date, price_satang)
-     select model_id, $1::date, today from run_prev where prev is null or prev <> today
-     on conflict (model_id, effective_date) do update set price_satang = excluded.price_satang
+    `insert into price_changes (model_id, effective_date, price_satang, last_seen)
+     select model_id, $1::date, today, $1::date from run_prev
+      where prev is null or prev <> today or prev_last is distinct from $2::date
      returning model_id`,
-    [feedDate],
+    [feedDate, prevDate],
   );
 
   await clearStaging(db, runId);
