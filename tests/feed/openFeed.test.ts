@@ -18,7 +18,7 @@ let body = '';
 beforeAll(async () => {
   server = createServer((req, res) => {
     if (req.url === '/redirect') { res.writeHead(302, { location: '/feed' }); res.end(); return; }
-    if (req.url === '/feed') { res.writeHead(200, { 'content-type': 'binary/octet-stream' }); res.end(body); return; }
+    if (req.url === '/feed') { res.writeHead(200, { 'content-type': 'binary/octet-stream', 'last-modified': 'Tue, 27 Oct 2026 02:20:00 GMT' }); res.end(body); return; }
     if (req.url === '/drop') {
       res.writeHead(200, { 'content-type': 'binary/octet-stream' });
       res.write(body);
@@ -82,6 +82,13 @@ test('openFeed fails on an unterminated quote instead of buffering the rest of t
   const header = '﻿' + FEED_COLUMNS.join(',') + '\n';
   body = header + '"' + 'x'.repeat(3 * 1024 * 1024) + '\n';
   await expect(collect(`${base}/feed`)).rejects.toThrow();
+});
+
+test('openFeed reports Last-Modified before the first record', async () => {
+  body = toCsv([makeFeedRecord()]);
+  const seen: (string | null)[] = [];
+  for await (const _ of openFeed(`${base}/feed`, m => seen.push(m.lastModified))) { /* drain */ }
+  expect(seen).toEqual(['Tue, 27 Oct 2026 02:20:00 GMT']);
 });
 
 test('openFeed throws when header changed', async () => {

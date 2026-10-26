@@ -3,15 +3,30 @@ import type { ReadableStream as WebReadableStream } from 'node:stream/web';
 import { parse } from 'csv-parse';
 import type { FeedRecord } from './columns.js';
 
+export interface FeedMeta {
+  /** The response's Last-Modified header, used to tell a refreshed file from yesterday's. */
+  lastModified: string | null;
+}
+
 const REQUIRED_COLUMNS = ['itemid', 'model_ids', 'model_prices', 'global_brand'];
 
 /**
  * Stream a feed CSV over HTTP one record at a time; the multi-GB file never sits in memory.
  * The URL carries a secret token, so it never appears in error messages.
  */
-export async function* openFeed(url: string, fetchFn: typeof fetch = fetch): AsyncIterable<FeedRecord> {
+export async function* openFeed(
+  url: string,
+  onMeta?: (meta: FeedMeta) => void,
+  fetchFn: typeof fetch = fetch,
+): AsyncIterable<FeedRecord> {
   const res = await fetchFn(url, { redirect: 'follow' });
   if (!res.ok || !res.body) throw new Error(`feed download failed: HTTP ${res.status}`);
+  try {
+    onMeta?.({ lastModified: res.headers.get('last-modified') });
+  } catch (e) {
+    await res.body.cancel();
+    throw e;
+  }
 
   const source = Readable.fromWeb(res.body as WebReadableStream<Uint8Array>);
   // A single field above this means a broken quote is swallowing the file; fail instead of buffering gigabytes.

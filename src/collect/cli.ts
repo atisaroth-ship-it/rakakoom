@@ -14,7 +14,7 @@ const db = createPgDb(config.databaseUrl);
 let exitCode = 0;
 try {
   await migrate(db);
-  const result = await runDaily({ db, feedUrls: config.feedUrls, openFeed: url => openFeed(url), alert, ping, now: () => new Date() });
+  const result = await runDaily({ db, feedUrls: config.feedUrls, openFeed: (url, onMeta) => openFeed(url, onMeta), alert, ping, now: () => new Date() });
   console.log(JSON.stringify(result));
   if (result.status === 'failed') exitCode = 1;
 } catch (e) {
