@@ -19,6 +19,12 @@ beforeAll(async () => {
   server = createServer((req, res) => {
     if (req.url === '/redirect') { res.writeHead(302, { location: '/feed' }); res.end(); return; }
     if (req.url === '/feed') { res.writeHead(200, { 'content-type': 'binary/octet-stream' }); res.end(body); return; }
+    if (req.url === '/drop') {
+      res.writeHead(200, { 'content-type': 'binary/octet-stream' });
+      res.write(body);
+      setTimeout(() => res.socket?.destroy(), 20);
+      return;
+    }
     res.writeHead(404); res.end('not found');
   });
   await new Promise<void>(r => server.listen(0, '127.0.0.1', r));
@@ -56,6 +62,26 @@ test('openFeed throws on 404 without leaking url', async () => {
   expect(err).toBeInstanceOf(Error);
   expect((err as Error).message).toMatch(/404/);
   expect((err as Error).message).not.toMatch(/missing|127\.0\.0\.1/);
+});
+
+test('openFeed rejects (not crashes) when the connection drops mid-file', async () => {
+  body = toCsv([makeFeedRecord(), makeFeedRecord({ itemid: '2' })]);
+  const crashes: unknown[] = [];
+  const onCrash = (e: unknown) => crashes.push(e);
+  process.on('uncaughtException', onCrash);
+  try {
+    await expect(collect(`${base}/drop`)).rejects.toThrow();
+    await new Promise(r => setTimeout(r, 50));
+  } finally {
+    process.off('uncaughtException', onCrash);
+  }
+  expect(crashes).toEqual([]);
+});
+
+test('openFeed fails on an unterminated quote instead of buffering the rest of the file', async () => {
+  const header = '﻿' + FEED_COLUMNS.join(',') + '\n';
+  body = header + '"' + 'x'.repeat(3 * 1024 * 1024) + '\n';
+  await expect(collect(`${base}/feed`)).rejects.toThrow();
 });
 
 test('openFeed throws when header changed', async () => {

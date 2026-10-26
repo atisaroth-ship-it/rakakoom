@@ -51,7 +51,19 @@ export function toSatang(s: string): number | null {
   return Number(m[1]) * 100 + Number((m[2] ?? '').padEnd(2, '0'));
 }
 
-const id = (s: string | undefined): number | null => (s && /^\d+$/.test(s.trim()) ? Number(s.trim()) : null);
+const id = (s: string | undefined): number | null => {
+  if (!s || !/^\d+$/.test(s.trim())) return null;
+  const n = Number(s.trim());
+  return Number.isSafeInteger(n) ? n : null;
+};
+/** Postgres text/jsonb reject NUL and lone surrogates; one such value would fail the whole day's apply. */
+const clean = (s: string): string => s.replace(/\u0000/g, '').toWellFormed();
+const cleanDeep = (v: unknown): unknown => {
+  if (typeof v === 'string') return clean(v);
+  if (Array.isArray(v)) return v.map(cleanDeep);
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [clean(k), cleanDeep(x)]));
+  return v;
+};
 const num = (s: string | undefined): number | null => {
   if (!s || !s.trim()) return null;
   const n = Number(s.trim());
@@ -68,7 +80,9 @@ const isNoBrand = (b: string): boolean => {
   return k === '' || k === 'nobrand';
 };
 
-export function parseFeedRow(r: FeedRecord): ParseResult {
+export function parseFeedRow(raw: FeedRecord): ParseResult {
+  const r: FeedRecord = {};
+  for (const [k, v] of Object.entries(raw)) r[k] = clean(v ?? '');
   const brand = (r.global_brand ?? '').trim();
   if (isNoBrand(brand)) return { ok: false, reason: 'no_brand' };
 
@@ -93,7 +107,7 @@ export function parseFeedRow(r: FeedRecord): ParseResult {
 
   let attributes: unknown = null;
   try {
-    attributes = r.global_item_attributes ? JSON.parse(r.global_item_attributes) : null;
+    attributes = r.global_item_attributes ? cleanDeep(JSON.parse(r.global_item_attributes)) : null;
   } catch {
     attributes = null;
   }

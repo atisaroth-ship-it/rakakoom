@@ -75,9 +75,17 @@ test('applyRun clears staging for the run', async () => {
 test('stores shop and item fields', async () => {
   await runDay('2026-10-27', [item()]);
   const shop = await db.query('select shop_id, shop_name, shop_rating, penalty_score, is_official, is_preferred, holiday_mode from shops');
-  expect(shop.rows).toEqual([{ shop_id: 101487342, shop_name: 'กัปตัน เอกสตีล', shop_rating: '4.93', penalty_score: 0, is_official: false, is_preferred: true, holiday_mode: false }]);
+  expect(shop.rows).toEqual([{ shop_id: 101487342, shop_name: 'กัปตัน เอกสตีล', shop_rating: '4.93', penalty_score: '0', is_official: false, is_preferred: true, holiday_mode: false }]);
   const it = await db.query<{ brand: string }>('select brand from items');
   expect(it.rows).toEqual([{ brand: 'Ingco(อิงโก้)' }]);
+});
+
+test('odd numeric values do not abort the apply', async () => {
+  await runDay('2026-10-27', [item({ seller_penalty_score: '1.5', shop_rating: '12.5', item_rating: '10', item_sold: '3000000000', stock: '3000000000' })]);
+  const s = await db.query<{ penalty_score: string; shop_rating: string }>('select penalty_score, shop_rating from shops');
+  expect(s.rows).toEqual([{ penalty_score: '1.5', shop_rating: '12.5' }]);
+  const it = await db.query<{ item_sold: number }>('select item_sold from items');
+  expect(it.rows).toEqual([{ item_sold: 3000000000 }]);
 });
 
 test('migrate is idempotent', async () => {

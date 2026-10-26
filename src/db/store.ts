@@ -53,7 +53,7 @@ export async function applyRun(db: Db, runId: number, feedDate: string): Promise
             s."isOfficial", s."isPreferred", s."holidayMode", $1::date
        from run_items ri,
             jsonb_to_record(ri.data->'shop') as s("shopId" bigint, "shopName" text, "sellerName" text, "shopRating" numeric,
-              "penaltyScore" int, "isOfficial" boolean, "isPreferred" boolean, "holidayMode" boolean)
+              "penaltyScore" numeric, "isOfficial" boolean, "isPreferred" boolean, "holidayMode" boolean)
       order by s."shopId", ri.item_id desc
      on conflict (shop_id) do update set
        shop_name = excluded.shop_name, seller_name = excluded.seller_name, shop_rating = excluded.shop_rating,
@@ -70,9 +70,9 @@ export async function applyRun(db: Db, runId: number, feedDate: string): Promise
             data->'categories'->>0, data->'categories'->>1, data->'categories'->>2,
             (data->'categoryIds'->>0)::bigint, (data->'categoryIds'->>1)::bigint, (data->'categoryIds'->>2)::bigint,
             nullif(data->'attributes', 'null'::jsonb), data->>'productLink', data->>'affiliateLink', data->>'imageLink',
-            (data->>'itemRating')::numeric, (data->>'itemSold')::int, (data->>'stock')::int, (data->>'crossBorder')::boolean,
+            (data->>'itemRating')::numeric, (data->>'itemSold')::bigint, (data->>'stock')::bigint, (data->>'crossBorder')::boolean,
             data->>'condition', (data->>'priceSatang')::bigint, (data->>'salePriceSatang')::bigint,
-            (data->>'discountPercentage')::int, $1::date, $1::date
+            (data->>'discountPercentage')::numeric, $1::date, $1::date
        from run_items
      on conflict (item_id) do update set
        shop_id = excluded.shop_id, title = excluded.title, brand = excluded.brand,

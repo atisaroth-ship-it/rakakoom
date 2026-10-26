@@ -24,6 +24,25 @@ test('non-numeric itemid is bad_ids', () => {
   expect(parseFeedRow(makeFeedRecord({ itemid: '' }))).toEqual({ ok: false, reason: 'bad_ids' });
 });
 
+test('strips NUL and repairs lone surrogates in every string, including attributes', () => {
+  const r = parseFeedRow(makeFeedRecord({
+    title: 'a\u0000b\uD83D',
+    model_names: 'x\u0000y',
+    global_item_attributes: '[{"formatted_value":"v\\u0000w\\ud83d"}]',
+  }));
+  expect(r.ok).toBe(true);
+  if (!r.ok) return;
+  expect(r.item.title).toBe('ab�');
+  expect(r.item.variants[0]!.name).toBe('xy');
+  expect(JSON.stringify(r.item.attributes)).not.toMatch(/\\u0000|\\ud83d/i);
+  expect(JSON.stringify(r.item)).not.toContain('\u0000');
+});
+
+test('ids beyond safe integer range are bad_ids', () => {
+  expect(parseFeedRow(makeFeedRecord({ itemid: '100000000000000000000' }))).toEqual({ ok: false, reason: 'bad_ids' });
+  expect(parseFeedRow(makeFeedRecord({ model_ids: '100000000000000000000' }))).toEqual({ ok: false, reason: 'bad_ids' });
+});
+
 test('toSatang avoids float error', () => {
   expect(toSatang('19.99')).toBe(1999);
   expect(toSatang('abc')).toBeNull();
