@@ -12,7 +12,9 @@ Type=oneshot
 User=rakakoom
 WorkingDirectory=/opt/rakakoom
 EnvironmentFile=/etc/rakakoom.env
+# 1 GB RAM: cap the Node heap so Postgres keeps its share.
+Environment=NODE_OPTIONS=--max-old-space-size=384
 ExecStart=/usr/bin/npm run --silent collect
-# Two ~4 GB files plus the apply step; generous ceiling so a slow day is not killed.
-TimeoutStartSec=5h
+# e2-micro is a shared-core VM; two ~4 GB files plus the apply step can take hours.
+TimeoutStartSec=8h
 Nice=5

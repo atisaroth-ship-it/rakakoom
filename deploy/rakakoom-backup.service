@@ -1,5 +1,5 @@
 [Unit]
-Description=RakaKoom daily database backup to OCI Object Storage
+Description=RakaKoom daily database backup to Google Cloud Storage
 After=network-online.target postgresql@16-main.service
 Requires=postgresql@16-main.service
 Wants=network-online.target
@@ -9,5 +9,7 @@ OnFailure=rakakoom-failure@%n.service
 Type=oneshot
 User=rakakoom
 EnvironmentFile=/etc/rakakoom.env
+# Never back up while a (slow) collector run is still writing today's data.
+ExecStartPre=/bin/sh -c 'while systemctl is-active --quiet rakakoom-collect.service; do sleep 60; done'
 ExecStart=/bin/bash /opt/rakakoom/deploy/backup.sh
-TimeoutStartSec=2h
+TimeoutStartSec=10h

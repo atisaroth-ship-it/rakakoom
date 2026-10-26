@@ -36,7 +36,7 @@ const FILE_RATIO = 0.8;
 const MALFORMED_RATIO = 0.05;
 const BASELINE_DAYS = 7;
 /** A 'running' row without a heartbeat for this long belongs to a dead process. */
-const STALE_RUN = "interval '45 minutes'";
+const STALE_RUN = "interval '3 hours'";
 
 const MALFORMED: SkipReason[] = ['bad_ids', 'variant_mismatch', 'bad_price'];
 
