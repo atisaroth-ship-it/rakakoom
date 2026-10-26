@@ -2,11 +2,13 @@ import { loadConfig } from '../config.js';
 import { migrate } from '../db/migrate.js';
 import { createPgDb } from '../db/pg.js';
 import { openFeed } from '../feed/openFeed.js';
-import { runDaily, type RunDeps } from './runDaily.js';
+import { createLineAlert } from '../notify/line.js';
+import { createPing } from '../notify/ping.js';
+import { runDaily } from './runDaily.js';
 
 const config = loadConfig(process.env);
-const alert: RunDeps['alert'] = async msg => { console.warn(msg); };
-const ping: RunDeps['ping'] = async () => {};
+const alert = createLineAlert(config.lineChannelAccessToken, config.adminLineUserId);
+const ping = createPing(config.healthcheckUrl);
 
 const db = createPgDb(config.databaseUrl);
 let exitCode = 0;
