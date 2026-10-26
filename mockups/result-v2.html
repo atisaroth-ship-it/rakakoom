@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RakaKoom Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0E3B2C;        /* เขียวเข้มจากเส้นขอบโลโก้ */
+    --green:#1FA463;
+    --green-2:#2FC27A;
+    --green-soft:#E3F4EA;
+    --orange:#F26A1E;
+    --orange-soft:#FFEBDD;
+    --yellow:#FFC93C;
+    --yellow-soft:#FFF5D9;
+    --red:#E5484D;
+    --red-soft:#FDE8E8;
+    --card:#FFFFFF;
+    --phone:#F3F7F4;
+    --bg:#DCE9E1;
+    --muted:#6B7D74;
+    --lazada:#2B3CC4;
+    --line-bg:#9DB7DE;
+    --shadow:0 8px 24px rgba(14,59,44,.08);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:"Prompt",system-ui,sans-serif;color:var(--ink)}
+  header.page{max-width:1100px;margin:0 auto;padding:24px 16px 8px}
+  header.page h1{margin:0;font-size:22px}
+  header.page p{margin:6px 0 0;color:var(--muted);font-size:14px}
+  .screens{display:flex;flex-wrap:wrap;gap:36px;justify-content:center;padding:16px 16px 40px;max-width:1100px;margin:0 auto}
+  .screen-wrap{width:360px;max-width:100%}
+  .screen-label{font-weight:600;font-size:14px;margin:0 0 10px}
+  .screen-label span{display:block;font-weight:400;color:var(--muted);font-size:12px}
+
+  .phone{background:var(--phone);border:7px solid #fff;border-radius:44px;overflow:hidden;box-shadow:0 20px 50px rgba(14,59,44,.15)}
+  .status{display:flex;justify-content:space-between;padding:12px 24px 4px;font-size:12px;font-weight:600}
+  .round{width:44px;height:44px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:var(--shadow);font-size:18px;flex:none}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px}
+  .topbar .mid{flex:1;padding:0 10px}
+  .topbar .name{font-weight:600;font-size:15px}
+  .topbar .sub{font-size:11px;color:var(--muted)}
+  .avatar{width:44px;height:44px;border-radius:50%;object-fit:cover;box-shadow:var(--shadow);background:#fff}
+
+  /* ห้องแชท LINE */
+  .chat{background:var(--line-bg);padding:14px 10px 18px;display:flex;flex-direction:column;gap:12px}
+  .bubble-me{align-self:flex-end;background:#A5E97B;border-radius:18px 4px 18px 18px;padding:8px 12px;font-size:12px;max-width:80%;word-break:break-all;color:#173b12}
+  .card{background:var(--card);border-radius:26px;overflow:hidden;width:304px;max-width:100%;padding:14px}
+  .card-head{display:flex;gap:12px;align-items:center}
+  .thumb{width:58px;height:58px;border-radius:18px;background:var(--green-soft);display:grid;place-items:center;font-size:28px;flex:none}
+  .pname{font-weight:600;font-size:13.5px;line-height:1.35}
+  .pmeta{font-size:11px;color:var(--muted);margin-top:2px}
+
+  .verdict{margin-top:12px;border-radius:18px;padding:10px 12px;background:var(--yellow-soft);font-size:12px;color:#5b4a12;display:flex;gap:10px;align-items:flex-start}
+  .verdict .ic{width:30px;height:30px;border-radius:50%;background:#fff;display:grid;place-items:center;flex:none;font-size:14px}
+  .verdict b{display:block;font-size:13px;color:var(--ink);margin-bottom:1px}
+
+  .rows{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+  .rowh,.row{display:grid;grid-template-columns:1fr 84px 84px;align-items:center;font-size:12px}
+  .rowh{font-size:11px;font-weight:600;padding:0 4px}
+  .rowh span{text-align:center}
+  .row{background:var(--phone);border-radius:999px;padding:4px 4px 4px 14px}
+  .row .p{text-align:center;padding:6px 0;border-radius:999px}
+  .row .p.win{background:var(--green);color:#fff;font-weight:600}
+  .shopee{color:var(--orange)} .lazada{color:var(--lazada)}
+  .cond{font-size:10.5px;color:var(--muted);margin:6px 4px 0}
+
+  .shop{margin-top:10px;border-radius:18px;padding:10px 12px;background:var(--phone);font-size:12px}
+  .badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600}
+  .badge i{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .badge.g{background:var(--green-soft);color:#0b6b3f} .badge.g i{background:var(--green)}
+  .badge.r{background:var(--red-soft);color:#a52a2e} .badge.r i{background:var(--red)}
+  .why{color:var(--muted);font-size:11px;margin-top:5px}
+  .shop .top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+  .shop .top b{font-size:12px}
+
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;padding:13px;font-weight:600;font-size:13.5px;text-decoration:none}
+  .btn.primary{background:var(--green);color:#fff;margin-top:14px}
+  .btn.ghost{background:var(--phone);color:var(--ink);margin-top:8px}
+  .tiny{font-size:10px;color:var(--muted);text-align:center;margin-top:5px}
+
+  /* หน้าชาร์ต */
+  .liff{padding:4px 16px 18px}
+  .hero{display:flex;justify-content:space-between;align-items:flex-end;margin:6px 0 14px}
+  .hero h2{margin:0;font-size:26px;line-height:1.15;font-weight:700}
+  .hero p{margin:4px 0 0;font-size:12px;color:var(--muted)}
+  .tabs{display:flex;background:#fff;border-radius:999px;padding:4px;box-shadow:var(--shadow);font-size:12px;font-weight:500}
+  .tabs button{flex:1;border:0;background:transparent;padding:9px 4px;font:inherit;color:var(--muted);cursor:pointer;border-radius:999px}
+  .tabs button.on{background:var(--green-soft);color:var(--ink);font-weight:600}
+  .chart-box{margin-top:12px;background:#fff;border-radius:24px;padding:12px 8px 6px;box-shadow:var(--shadow)}
+  .legend{display:flex;gap:14px;font-size:11px;padding:0 8px 4px;color:var(--muted)}
+  .legend i{display:inline-block;width:8px;height:8px;border-radius:50%;vertical-align:middle;margin-right:5px}
+  svg text{font-family:"Prompt",sans-serif}
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .tile{background:#fff;border-radius:22px;padding:12px;box-shadow:var(--shadow)}
+  .tile .k{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .tile .k i{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:11px}
+  .tile.low .k i{background:var(--green-soft);color:var(--green)}
+  .tile.high .k i{background:var(--orange-soft);color:var(--orange)}
+  .tile .v{font-size:20px;font-weight:600;margin-top:6px}
+  .tile .d{font-size:10.5px;color:var(--muted)}
+
+  .dark{margin-top:12px;background:var(--ink);color:#fff;border-radius:24px;padding:14px 16px}
+  .dark .head{display:flex;justify-content:space-between;align-items:baseline}
+  .dark .head span{font-size:12px;opacity:.75}
+  .dark .head b{font-size:26px;font-weight:600}
+  .track{margin-top:10px;height:34px;border-radius:999px;background:rgba(255,255,255,.12);position:relative}
+  .fill{position:absolute;left:3px;top:3px;bottom:3px;border-radius:999px;background:#fff;display:flex;align-items:center;justify-content:flex-end;padding-right:4px}
+  .fill .dot{width:22px;height:22px;border-radius:50%;background:var(--yellow);display:grid;place-items:center;font-size:11px;color:var(--ink);font-weight:700}
+  .scale{display:flex;justify-content:space-between;font-size:10.5px;opacity:.75;margin-top:6px}
+  .promo{margin-top:12px;font-size:12px}
+  .promo .it{display:flex;align-items:center;gap:10px;background:#fff;border-radius:999px;padding:6px 8px 6px 6px;margin-top:6px;box-shadow:var(--shadow)}
+  .promo .ic{width:32px;height:32px;border-radius:50%;background:var(--green-soft);display:grid;place-items:center;font-size:11px;font-weight:700;flex:none;color:var(--green)}
+  .promo .t{flex:1;line-height:1.3}
+  .promo .t small{display:block;color:var(--muted);font-size:10.5px}
+  .promo .tag{font-size:10px;padding:2px 8px;border-radius:999px;background:var(--green-soft);color:#0b6b3f;white-space:nowrap}
+  .promo .tag.est{background:var(--yellow-soft);color:#7a5a00}
+  .promo h4{margin:14px 4px 0;font-size:13px;display:flex;justify-content:space-between}
+  .promo h4 span{font-weight:400;color:var(--muted);font-size:11px}
+  .src{font-size:10.5px;color:var(--muted);margin:10px 4px 0}
+  .note{max-width:1100px;margin:0 auto;padding:0 16px 40px;font-size:13px;color:var(--muted)}
+  .note b{color:var(--ink)}
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>RakaKoom — หน้าตาผลลัพธ์ (ร่างที่ 2)</h1>
+  <p>ข้อมูลทั้งหมดเป็นตัวอย่างสมมติ แสดงสภาพตอนที่เก็บราคาครบ 1 ปีแล้ว</p>
+</header>
+
+<div class="screens">
+  <!-- จอ 1: แชท LINE -->
+  <div class="screen-wrap">
+    <p class="screen-label">① ในแชท LINE หลังวางลิงก์<span>การ์ดสรุปที่บอทตอบกลับ</span></p>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+      <div class="topbar">
+        <div class="round">‹</div>
+        <div class="mid"><div class="name">RakaKoom</div><div class="sub">ราคาคุ้ม · เช็คราคาข้ามแอพ</div></div>
+        <img class="avatar" src="logo.jpg" alt="">
+      </div>
+      <div class="chat">
+        <div class="bubble-me">https://shopee.co.th/Sony-WH-1000XM5-i.123456.789012</div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="thumb">🎧</div>
+            <div>
+              <div class="pname">Sony WH-1000XM5 หูฟังไร้สาย ตัดเสียงรบกวน สีดำ</div>
+              <div class="pmeta">เจอรุ่นตรงกันบน Lazada 8 ร้าน</div>
+            </div>
+          </div>
+
+          <div class="verdict">
+            <div class="ic">⏳</div>
+            <div><b>มีช่วงที่ราคาถูกกว่านี้</b>ต่ำสุดที่บันทึกไว้ ฿9,690 (11 พ.ย.) · ถ้ารอได้ ช่วง 11.11 มักถูกกว่านี้ราว 10%</div>
+          </div>
+
+          <div class="rows">
+            <div class="rowh"><span></span><span class="shopee">Shopee</span><span class="lazada">Lazada</span></div>
+            <div class="row"><span>ราคาปกติ</span><span class="p">฿11,990</span><span class="p win">฿11,690</span></div>
+            <div class="row"><span>โค้ดขั้นต่ำ</span><span class="p">฿11,790</span><span class="p win">฿11,490</span></div>
+            <div class="row"><span>โค้ดสูงสุด</span><span class="p win">฿10,790</span><span class="p">฿10,990</span></div>
+          </div>
+          <div class="cond">* โค้ดสูงสุด Shopee: ลด 10% ต้องจ่ายด้วยบัตรเครดิต ธ.ตัวอย่าง</div>
+
+          <div class="shop">
+            <span class="badge g"><i></i>ร้านนี้ส่งของจริงเป็นส่วนใหญ่</span>
+            <div class="why">Sony Official Store (Lazada) · Mall · ขายแล้ว 12k ชิ้น · คะแนน 4.9</div>
+          </div>
+          <div class="shop">
+            <div class="top"><span class="badge r"><i></i>เสี่ยงโดนยกเลิก</span><b>มีร้านขาย ฿8,500</b></div>
+            <div class="why">ร้านเปิด 1 เดือน · ถูกกว่าตลาด 27% · รีวิวบ่น "ร้านยกเลิก" 6 ครั้ง</div>
+          </div>
+
+          <a class="btn primary" href="#">ซื้อที่ Lazada ฿11,490</a>
+          <div class="tiny">ราคาเมื่อใช้โค้ดขั้นต่ำ · ร้านที่แนะนำ</div>
+          <a class="btn ghost" href="#">📈 ดูชาร์ตราคาทั้งปี</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- จอ 2: หน้าชาร์ต -->
+  <div class="screen-wrap">
+    <p class="screen-label">② หน้าชาร์ตราคา<span>เปิดเมื่อกด "ดูชาร์ตราคาทั้งปี"</span></p>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+      <div class="topbar">
+        <div class="round">‹</div>
+        <div class="mid"></div>
+        <img class="avatar" src="logo.jpg" alt="">
+      </div>
+      <div class="liff">
+        <div class="hero">
+          <div>
+            <h2>ประวัติราคา<br>12 เดือน</h2>
+            <p>Sony WH-1000XM5 · สีดำ</p>
+          </div>
+          <div class="thumb" style="background:#fff;box-shadow:var(--shadow)">🎧</div>
+        </div>
+
+        <div class="tabs" id="tabs">
+          <button data-k="normal">ราคาปกติ</button>
+          <button data-k="min">โค้ดขั้นต่ำ</button>
+          <button data-k="max" class="on">โค้ดสูงสุด</button>
+        </div>
+
+        <div class="chart-box">
+          <div class="legend">
+            <span><i style="background:var(--orange)"></i>Shopee</span>
+            <span><i style="background:var(--lazada)"></i>Lazada</span>
+          </div>
+          <svg id="chart" viewBox="0 0 320 190" width="100%"></svg>
+        </div>
+
+        <div class="tiles">
+          <div class="tile low"><div class="k"><i>↓</i>ต่ำสุดในรอบปี</div><div class="v" id="lowV"></div><div class="d" id="lowD"></div></div>
+          <div class="tile high"><div class="k"><i>↑</i>สูงสุดในรอบปี</div><div class="v" id="highV"></div><div class="d" id="highD"></div></div>
+        </div>
+
+        <div class="dark">
+          <div class="head"><span>ราคาวันนี้เทียบกับช่วงทั้งปี</span><b id="pos"></b></div>
+          <div class="track"><div class="fill" id="fill"><div class="dot">฿</div></div></div>
+          <div class="scale"><span id="sLo"></span><span>ยิ่งสั้นยิ่งใกล้ราคาต่ำสุด</span><span id="sHi"></span></div>
+        </div>
+
+        <div class="promo">
+          <h4>ช่วงที่มักถูกกว่า <span>ราคาโค้ดสูงสุด</span></h4>
+          <div class="it"><div class="ic">11.11</div><div class="t">เคยลงต่ำสุด ฿9,690<small>ถูกกว่าวันนี้ราว 10%</small></div><span class="tag">บันทึกจริง</span></div>
+          <div class="it"><div class="ic">12.12</div><div class="t">ต่ำกว่าปกติราว 8%<small>เฉลี่ยจากช่วงโปรที่บันทึกได้</small></div><span class="tag">บันทึกจริง</span></div>
+          <div class="it"><div class="ic">25</div><div class="t">โปรวันเงินเดือนออก<small>ต่ำกว่าปกติราว 4%</small></div><span class="tag est">ปฏิทินโปร</span></div>
+        </div>
+        <div class="src">บันทึกราคาตั้งแต่ 26 ต.ค. 2026 · วันไหนไม่ได้บันทึก จะไม่นำมาคิด</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="note"><b>หมายเหตุ:</b> การ์ดในแชท (จอ ①) ทำจากรูปแบบข้อความของ LINE ใส่ชาร์ตที่กดเลื่อนดูได้ไม่ได้ และใส่เงาไม่ได้ (มุมโค้งกับสีทำได้) จึงให้ปุ่ม "ดูชาร์ตราคาทั้งปี" เปิดหน้าเว็บในแอพ LINE (จอ ②) แทน</p>
+
+<script>
+  // ข้อมูลตัวอย่าง 12 เดือน (พ.ย. – ต.ค.)
+  const months = ["พ.ย.","ธ.ค.","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค."];
+  const data = {
+    normal:{s:[10990,11290,11990,12290,12490,12290,11990,11890,12190,12290,11990,11990], l:[10790,11190,11890,12190,12290,12090,11890,11790,11990,11990,11790,11690]},
+    min:   {s:[10790,11090,11790,12090,12290,12090,11790,11690,11990,12090,11790,11790], l:[10590,10990,11690,11990,12090,11890,11690,11590,11790,11790,11590,11490]},
+    max:   {s:[ 9690,10190,10990,11290,11490,11190,10890,10790,10990,11190,10890,10790], l:[ 9890,10290,11090,11390,11490,11290,10990,10890,11090,11190,10990,10990]}
+  };
+  const fmt = n => "฿" + n.toLocaleString("en-US");
+  function draw(k){
+    const {s,l} = data[k], all = s.concat(l);
+    const lo = Math.min(...all), hi = Math.max(...all);
+    const pad = (hi-lo)*0.15, y0 = lo-pad, y1 = hi+pad;
+    const X = i => 34 + i*(276/11), Y = v => 160 - (v-y0)/(y1-y0)*140;
+    const path = a => a.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)).join(" ");
+    let g = `<defs><linearGradient id="gs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F26A1E" stop-opacity=".18"/><stop offset="1" stop-color="#F26A1E" stop-opacity="0"/></linearGradient></defs>`;
+    [lo,hi].forEach(v=>{ g += `<line x1="34" x2="310" y1="${Y(v)}" y2="${Y(v)}" stroke="#0E3B2C" stroke-opacity=".12" stroke-dasharray="3 4"/>`
+      + `<text x="30" y="${Y(v)+3}" font-size="8.5" text-anchor="end" fill="#6B7D74">${(v/1000).toFixed(1)}k</text>`; });
+    months.forEach((m,i)=>{ if(i%2===0) g += `<text x="${X(i)}" y="178" font-size="8.5" text-anchor="middle" fill="#6B7D74">${m}</text>`; });
+    g += `<path d="${path(s)} L ${X(11)} 160 L ${X(0)} 160 Z" fill="url(#gs)"/>`;
+    g += `<path d="${path(s)}" fill="none" stroke="#F26A1E" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    g += `<path d="${path(l)}" fill="none" stroke="#2B3CC4" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="1 0"/>`;
+    const iLo = all.indexOf(lo), iHi = all.indexOf(hi);
+    const pt = (idx,v,fill,label,dy) => { const i = idx%12;
+      return `<circle cx="${X(i)}" cy="${Y(v)}" r="5.5" fill="${fill}" stroke="#fff" stroke-width="2.5"/>`
+           + `<text x="${Math.min(Math.max(X(i),50),290)}" y="${Y(v)+dy}" font-size="9" font-weight="600" text-anchor="middle" fill="#0E3B2C">${label}</text>`; };
+    g += pt(iLo,lo,"#1FA463","ต่ำสุด "+fmt(lo),17) + pt(iHi,hi,"#F26A1E","สูงสุด "+fmt(hi),-10);
+    // ราคาวันนี้ = ถูกสุดระหว่างสองแอพ
+    const today = Math.min(s[11], l[11]);
+    const ti = s[11] <= l[11] ? s : l;
+    g += `<circle cx="${X(11)}" cy="${Y(ti[11])}" r="5" fill="#FFC93C" stroke="#fff" stroke-width="2.5"/>`;
+    document.getElementById("chart").innerHTML = g;
+    const app = i => i<12 ? "Shopee" : "Lazada";
+    document.getElementById("lowV").textContent = fmt(lo);
+    document.getElementById("lowD").textContent = app(iLo)+" · "+months[iLo%12];
+    document.getElementById("highV").textContent = fmt(hi);
+    document.getElementById("highD").textContent = app(iHi)+" · "+months[iHi%12];
+    // แถบตำแหน่งราคาวันนี้ในช่วงต่ำสุด–สูงสุด
+    const pct = Math.round((today-lo)/(hi-lo)*100);
+    document.getElementById("pos").textContent = fmt(today);
+    document.getElementById("fill").style.width = `calc(${Math.max(pct,12)}% - 6px)`;
+    document.getElementById("sLo").textContent = fmt(lo);
+    document.getElementById("sHi").textContent = fmt(hi);
+  }
+  document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{
+    document.querySelectorAll("#tabs button").forEach(x=>x.classList.toggle("on",x===b));
+    draw(b.dataset.k);
+  });
+  draw("max");
+</script>
+</body>
+</html>
