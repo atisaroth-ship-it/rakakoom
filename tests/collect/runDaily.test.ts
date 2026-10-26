@@ -177,3 +177,13 @@ test('skips while another run is in progress', async () => {
   expect(r).toMatchObject({ status: 'skipped', error: expect.stringMatching(/in progress/) });
   expect(open).not.toHaveBeenCalled();
 });
+
+test('out-of-scope rows are skipped but not counted as malformed', async () => {
+  const scope = { include: ['Audio'], excludeCategory2: {} };
+  const inside = many(10).map(r => ({ ...r, global_category1: 'Audio' }));
+  const outside = many(5, 100).map(r => ({ ...r, global_category1: 'Home & Living' }));
+  const d = deps({ openFeed: feeds({ u1: [...inside, ...outside] }), scope });
+  const r = await runDaily(d);
+  expect(r).toMatchObject({ status: 'success', rowsKept: 10, skipped: { out_of_scope: 5 } });
+  expect(d.alert).not.toHaveBeenCalled();
+});

@@ -1,0 +1,4 @@
+{
+  "include": ["Mobile & Gadgets", "Home Appliances", "Computers & Accessories", "Cameras & Drones", "Audio", "Gaming & Consoles"],
+  "excludeCategory2": { "Mobile & Gadgets": ["Accessories"] }
+}

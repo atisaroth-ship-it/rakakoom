@@ -3,6 +3,7 @@ import { migrate } from '../db/migrate.js';
 import { createPgDb } from '../db/pg.js';
 import { waitForDb } from '../db/waitForDb.js';
 import { openFeed } from '../feed/openFeed.js';
+import { loadScope } from '../feed/scope.js';
 import { createLineAlert } from '../notify/line.js';
 import { createPing } from '../notify/ping.js';
 import { runDaily } from './runDaily.js';
@@ -17,7 +18,7 @@ let exitCode = 0;
 try {
   await waitForDb(db);
   await migrate(db);
-  const result = await runDaily({ db, feedUrls: config.feedUrls, openFeed: (url, onMeta) => openFeed(url, onMeta), alert, ping, now: () => new Date() });
+  const result = await runDaily({ db, feedUrls: config.feedUrls, openFeed: (url, onMeta) => openFeed(url, onMeta), scope: loadScope(), alert, ping, now: () => new Date() });
   console.log(JSON.stringify(result));
   if (result.status === 'failed') exitCode = 1;
 } catch (e) {

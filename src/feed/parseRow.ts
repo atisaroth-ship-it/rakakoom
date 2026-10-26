@@ -40,7 +40,7 @@ export interface ParsedItem {
   shop: ParsedShop;
 }
 
-export type SkipReason = 'no_brand' | 'bad_ids' | 'variant_mismatch' | 'bad_price';
+export type SkipReason = 'out_of_scope' | 'no_brand' | 'bad_ids' | 'variant_mismatch' | 'bad_price';
 
 export type ParseResult = { ok: true; item: ParsedItem } | { ok: false; reason: SkipReason };
 
