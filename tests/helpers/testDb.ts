@@ -1,5 +1,6 @@
 import { PGlite } from '@electric-sql/pglite';
 import type { Db } from '../../src/db/db.js';
+import { migrate } from '../../src/db/migrate.js';
 
 type Q = Pick<PGlite, 'query'>;
 
@@ -13,5 +14,7 @@ function wrap(q: Q, root: PGlite, inTx: boolean): Db {
 
 export async function createTestDb(): Promise<Db> {
   const pg = new PGlite();
-  return wrap(pg, pg, false);
+  const db = wrap(pg, pg, false);
+  await migrate(db);
+  return db;
 }
