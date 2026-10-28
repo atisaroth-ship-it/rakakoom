@@ -37,10 +37,10 @@ test('matchRule excludeTitlePattern drops lookalikes', () => {
   expect(matchRule(rec({ global_category1: 'Pets', title: 'ห้องน้ำแมวอัตโนมัติ' }), s)?.name).toBe('p');
 });
 
-test('committed pet-electric rule rejects cat litter sand', () => {
+test('committed scope files cat litter sand under cat-litter, not pet-electric', () => {
   const s = loadScope();
   const base = { global_category1: 'Pets', global_category2: 'Litter & Toilet', global_category3: 'Cat Litter & Boxes' };
-  expect(matchRule(rec({ ...base, title: '(6ลิตร) Miao Wu ทรายแมวเต้าหู้พรีเมียม ใช้กับกระบะทรายอัตโนมัติได้' }), s)).toBeNull();
+  expect(matchRule(rec({ ...base, title: '(6ลิตร) Miao Wu ทรายแมวเต้าหู้พรีเมียม ใช้กับกระบะทรายอัตโนมัติได้' }), s)?.name).toBe('cat-litter');
   expect(matchRule(rec({ ...base, title: 'ห้องน้ำแมวอัตโนมัติ PETKIT PURA MAX' }), s)?.name).toBe('pet-electric');
 });
 
@@ -78,9 +78,23 @@ test('applyScope uses the title weight when variant names have none', () => {
 test('committed scope has the approved rules and minimums', () => {
   const s = loadScope();
   const by = Object.fromEntries(s.rules.map(r => [r.name, r]));
-  expect(Object.keys(by)).toEqual(['mobile', 'electronics', 'home-garden-tools', 'water-tanks', 'pet-electric', 'pet-food']);
+  expect(Object.keys(by)).toEqual(['mobile', 'electronics', 'home-garden-tools', 'water-tanks', 'pet-electric', 'cat-litter', 'pet-food']);
   expect(by['pet-electric']!.minSold).toBe(4);
   expect(by['pet-food']!).toMatchObject({ minSold: 10, minKg: 7 });
-  for (const n of ['mobile', 'electronics', 'home-garden-tools', 'water-tanks']) expect(by[n]!.minSold).toBe(10);
+  for (const n of ['mobile', 'electronics', 'home-garden-tools', 'water-tanks', 'cat-litter']) expect(by[n]!.minSold).toBe(10);
   expect(by.mobile!.excludeCategory2).toEqual(['Accessories']);
+});
+
+test('committed scope: cat litter of any size is collected', () => {
+  const s = loadScope();
+  const base = { global_category1: 'Pets', global_category2: 'Litter & Toilet', global_category3: 'Cat Litter & Boxes' };
+  expect(matchRule(rec({ ...base, title: '(6ลิตร) Miao Wu ทรายแมวเต้าหู้พรีเมียม' }), s)?.name).toBe('cat-litter');
+  expect(matchRule(rec({ ...base, title: 'ทรายแมวภูเขาไฟ 20 ลิตร ยกกระสอบ' }), s)?.name).toBe('cat-litter');
+});
+
+test('committed scope: cables, switches and plugs are not collected; monitors are', () => {
+  const s = loadScope();
+  expect(matchRule(rec({ global_category1: 'Home Appliances', global_category2: 'Electrical Circuitry & Parts', global_category3: 'Others', title: 'ปลั๊กไฟ 4 ช่อง' }), s)).toBeNull();
+  expect(matchRule(rec({ global_category1: 'Home Appliances', global_category2: 'Kitchen Appliances', title: 'หม้อทอดไร้น้ำมัน' }), s)?.name).toBe('electronics');
+  expect(matchRule(rec({ global_category1: 'Computers & Accessories', global_category2: 'Monitors', title: 'Samsung จอมอนิเตอร์ 27 นิ้ว' }), s)?.name).toBe('electronics');
 });

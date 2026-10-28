@@ -1,0 +1,25 @@
+import { migrate } from '../db/migrate.js';
+import { createPgDb } from '../db/pg.js';
+import { databaseSizeBytes } from '../db/size.js';
+import { waitForDb } from '../db/waitForDb.js';
+import { loadScope } from '../feed/scope.js';
+import { cleanupOutOfScope } from './cleanup.js';
+
+const url = process.env.DATABASE_URL;
+if (!url) throw new Error('missing DATABASE_URL');
+const db = createPgDb(url);
+const mb = (b: number) => `${Math.round(b / 1048576)} MB`;
+try {
+  await waitForDb(db);
+  await migrate(db);
+  const before = await databaseSizeBytes(db);
+  const stats = await cleanupOutOfScope(db, loadScope());
+  // Return freed space (and the columns dropped by migration 003) to the database; cannot run in a transaction.
+  for (const t of ['items', 'variants', 'price_changes', 'shops', 'staging_items', 'staging_variants']) {
+    await db.query(`vacuum (full, analyze) ${t}`);
+  }
+  const after = await databaseSizeBytes(db);
+  console.log(JSON.stringify({ ...stats, sizeBefore: mb(before), sizeAfter: mb(after) }));
+} finally {
+  await db.close();
+}

@@ -1,0 +1,34 @@
+name: cleanup out-of-scope data (manual)
+
+# One-off maintenance: deletes stored products the current config/categories.json would not collect.
+# Run the backup workflow first. Manual only; type DELETE to confirm.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DELETE to confirm (run "backup database" first)'
+        required: true
+
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    if: inputs.confirm == 'DELETE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Delete out-of-scope data and reclaim space
+        run: npx tsx src/maintenance/cleanupCli.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
