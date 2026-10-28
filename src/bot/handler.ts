@@ -1,5 +1,6 @@
 import type { Db } from '../db/db.js';
 import { buildReplyCard } from './card.js';
+import { buildLatestCard, loadLatestPrice } from './latest.js';
 import { extractShopeeUrls, type ItemRef } from './links.js';
 import { findSameModel } from './match.js';
 import { loadItemReport, type ItemReport, type VariantReport } from './report.js';
@@ -39,7 +40,11 @@ async function answerItem(ref: ItemRef, deps: BotDeps, token: string) {
   if (!report || report.variants.length === 0) {
     await deps.db.query('insert into link_requests (item_id, shop_id) values ($1, $2)', [ref.itemId, ref.shopId])
       .catch(err => console.error('link_requests insert failed', err));
-    await deps.reply(token, [textMessage(NO_DATA)]);
+    const latest = await loadLatestPrice(deps.db, ref.itemId).catch(err => {
+      console.error('latest price lookup failed', err);
+      return null;
+    });
+    await deps.reply(token, [latest ? buildLatestCard(latest, deps.affiliateId) : textMessage(NO_DATA)]);
     return;
   }
   if (report.variants.length === 1) {

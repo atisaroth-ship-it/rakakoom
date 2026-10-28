@@ -143,3 +143,46 @@ export async function applyRun(db: Db, runId: number, feedDate: string, prevDate
   await clearStaging(db, runId);
   return { items: items.rows.length, variants: variants.rows.length, priceChanges: changes.rows.length };
 }
+
+/** Titles are only shown in the card header; a short prefix keeps the latest-price table small. */
+const LATEST_TITLE_CHARS = 80;
+
+/** Image URLs are https://cf.shopee.co.th/file/{key}; store only the key. */
+export const imageKey = (url: string): string => url.replace(/^https?:\/\/[^/]+\/file\//, '');
+
+/** Upsert the latest price of each item (no history; spec 11 latest-price fallback). */
+export async function upsertLatestPrices(db: Db, feedDate: string, items: ParsedItem[]): Promise<void> {
+  if (items.length === 0) return;
+  const rows = items.map(it => {
+    const prices = it.variants.map(v => v.priceSatang);
+    return {
+      itemId: it.itemId, shopId: it.shopId, title: it.title.slice(0, LATEST_TITLE_CHARS), brand: it.brand,
+      category1: it.categories[0], imageKey: imageKey(it.imageLink), itemSold: it.itemSold,
+      minPrice: Math.min(...prices), maxPrice: Math.max(...prices), variantCount: it.variants.length,
+      shopName: it.shop.shopName, shopRating: it.shop.shopRating, penaltyScore: it.shop.penaltyScore,
+      isOfficial: it.shop.isOfficial, isPreferred: it.shop.isPreferred, holidayMode: it.shop.holidayMode,
+    };
+  });
+  await db.query(
+    `insert into latest_prices (item_id, shop_id, title, brand, category1, image_key, item_sold, min_price_satang,
+       max_price_satang, variant_count, shop_name, shop_rating, penalty_score, is_official, is_preferred, holiday_mode, last_seen)
+     select distinct on (r."itemId") r."itemId", r."shopId", r.title, r.brand, r.category1, r."imageKey", r."itemSold",
+            r."minPrice", r."maxPrice", r."variantCount", r."shopName", r."shopRating", r."penaltyScore",
+            r."isOfficial", r."isPreferred", r."holidayMode", $1::date
+       from jsonb_to_recordset($2::jsonb) as r("itemId" bigint, "shopId" bigint, title text, brand text, category1 text,
+            "imageKey" text, "itemSold" bigint, "minPrice" bigint, "maxPrice" bigint, "variantCount" int, "shopName" text,
+            "shopRating" numeric, "penaltyScore" numeric, "isOfficial" boolean, "isPreferred" boolean, "holidayMode" boolean)
+      order by r."itemId"
+     on conflict (item_id) do update set
+       shop_id = excluded.shop_id, title = excluded.title, brand = excluded.brand, category1 = excluded.category1,
+       image_key = excluded.image_key, item_sold = excluded.item_sold, min_price_satang = excluded.min_price_satang,
+       max_price_satang = excluded.max_price_satang, variant_count = excluded.variant_count, shop_name = excluded.shop_name,
+       shop_rating = excluded.shop_rating, penalty_score = excluded.penalty_score, is_official = excluded.is_official,
+       is_preferred = excluded.is_preferred, holiday_mode = excluded.holiday_mode, last_seen = excluded.last_seen`,
+    [feedDate, JSON.stringify(rows)],
+  );
+}
+
+export async function pruneLatestPrices(db: Db, feedDate: string, keepDays: number): Promise<void> {
+  await db.query('delete from latest_prices where last_seen <= $1::date - $2::int', [feedDate, keepDays]);
+}

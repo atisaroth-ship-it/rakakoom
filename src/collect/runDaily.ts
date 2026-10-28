@@ -1,6 +1,6 @@
 import type { Db } from '../db/db.js';
 import { databaseSizeBytes } from '../db/size.js';
-import { applyRun, clearStaging, stageItems } from '../db/store.js';
+import { applyRun, clearStaging, pruneLatestPrices, stageItems, upsertLatestPrices } from '../db/store.js';
 import type { FeedRecord } from '../feed/columns.js';
 import type { FeedMeta } from '../feed/openFeed.js';
 import { parseFeedRow, type ParsedItem, type SkipReason } from '../feed/parseRow.js';
@@ -19,6 +19,8 @@ export interface RunDeps {
   scope?: CategoryScope;
   /** Alert when the database reaches SIZE_ALERT_RATIO of this. */
   dbSizeLimitBytes?: number;
+  /** Keep the latest price of every branded feed item for this many days; omitted = off. */
+  latestPriceDays?: number;
 }
 
 export interface RunResult {
@@ -95,6 +97,7 @@ export async function runDaily(deps: RunDeps): Promise<RunResult> {
   const lastModified: (string | null)[] = [];
   try {
     let batch: ParsedItem[] = [];
+    let latest: ParsedItem[] = [];
     for (const [i, url] of deps.feedUrls.entries()) {
       fileRows[i] = 0;
       lastModified[i] = null;
@@ -108,14 +111,21 @@ export async function runDaily(deps: RunDeps): Promise<RunResult> {
       for await (const record of deps.openFeed(url, onMeta)) {
         result.rowsRead++;
         fileRows[i]!++;
-        const rule = deps.scope ? matchRule(record, deps.scope) : null;
-        if (deps.scope && !rule) {
-          result.skipped.out_of_scope = (result.skipped.out_of_scope ?? 0) + 1;
-          continue;
-        }
         const parsed = parseFeedRow(record);
         if (!parsed.ok) {
           result.skipped[parsed.reason] = (result.skipped[parsed.reason] ?? 0) + 1;
+          continue;
+        }
+        if (deps.latestPriceDays) {
+          latest.push(parsed.item);
+          if (latest.length >= batchSize) {
+            await upsertLatestPrices(db, feedDate, latest);
+            latest = [];
+          }
+        }
+        const rule = deps.scope ? matchRule(record, deps.scope) : null;
+        if (deps.scope && !rule) {
+          result.skipped.out_of_scope = (result.skipped.out_of_scope ?? 0) + 1;
           continue;
         }
         const item = rule ? applyScope(parsed.item, rule) : parsed.item;
@@ -134,6 +144,10 @@ export async function runDaily(deps: RunDeps): Promise<RunResult> {
       if (fileRows[i] === 0) throw new Error(`feed file ${i + 1} returned no rows`);
     }
     await stageItems(db, runId, batch);
+    if (deps.latestPriceDays) {
+      await upsertLatestPrices(db, feedDate, latest);
+      await pruneLatestPrices(db, feedDate, deps.latestPriceDays);
+    }
     if (result.rowsKept === 0) throw new Error(`no branded items in feed (${result.rowsRead} rows read)`);
 
     await beat();

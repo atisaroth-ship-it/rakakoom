@@ -203,3 +203,25 @@ test('no size alert below 80%', async () => {
   await runDaily(d);
   expect(d.alert).not.toHaveBeenCalled();
 });
+
+test('latest prices are kept for every branded row, in scope or not', async () => {
+  const scope = { rules: [{ name: 'audio', category1: ['Audio'], minSold: 10 }] };
+  const rows = [
+    rec('1', '11', { global_category1: 'Audio', item_sold: '12' }),
+    rec('2', '21', { global_category1: 'Home & Living', item_sold: '1', model_ids: '21|22', model_names: 'a|b', model_prices: '90|120' }),
+    rec('3', '31', { global_category1: 'Audio', item_sold: '1' }),
+    rec('4', '41', { global_brand: 'NoBrand' }),
+  ];
+  await runDaily(deps({ openFeed: feeds({ u1: rows }), scope, latestPriceDays: 4 }));
+  const lp = await db.query<{ item_id: number; min_price_satang: number; max_price_satang: number; variant_count: number }>(
+    'select item_id, min_price_satang, max_price_satang, variant_count from latest_prices order by item_id');
+  expect(lp.rows.map(r => [Number(r.item_id), Number(r.min_price_satang), Number(r.max_price_satang), Number(r.variant_count)]))
+    .toEqual([[1, 36000, 36000, 1], [2, 9000, 12000, 2], [3, 36000, 36000, 1]]);
+});
+
+test('latest prices older than the retention window are removed', async () => {
+  await runDaily(deps({ openFeed: feeds({ u1: [rec('1', '11'), rec('2', '21')] }), now: at('2026-10-20T03:30:00Z'), latestPriceDays: 4 }));
+  await runDaily(deps({ openFeed: feeds({ u1: [rec('2', '21')] }), now: at('2026-10-25T03:30:00Z'), latestPriceDays: 4 }));
+  const lp = await db.query<{ item_id: number }>('select item_id from latest_prices order by item_id');
+  expect(lp.rows.map(r => Number(r.item_id))).toEqual([2]);
+});

@@ -11,6 +11,16 @@
       "minSold": 10
     },
     {
+      "name": "large-appliances",
+      "category1": [
+        "Home Appliances"
+      ],
+      "category2": [
+        "Large Household Appliances"
+      ],
+      "minSold": 2
+    },
+    {
       "name": "electronics",
       "category1": [
         "Home Appliances",

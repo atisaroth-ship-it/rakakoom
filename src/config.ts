@@ -6,6 +6,8 @@ export interface Config {
   healthcheckUrl: string | null;
   /** Storage limit of the database plan (Neon free: 1 GB per project). */
   dbSizeLimitBytes: number;
+  /** Days of latest prices kept for every branded feed item (bot fallback). */
+  latestPriceDays: number;
 }
 
 const optional = (v: string | undefined): string | null => (v && v.trim() ? v.trim() : null);
@@ -24,6 +26,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     adminLineUserId: optional(env.ADMIN_LINE_USER_ID),
     healthcheckUrl: optional(env.HEALTHCHECK_URL),
     dbSizeLimitBytes: Number(optional(env.DB_SIZE_LIMIT_MB) ?? 1024) * 1024 * 1024,
+    latestPriceDays: Number(optional(env.LATEST_PRICE_DAYS) ?? 4),
   };
 }
 

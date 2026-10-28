@@ -1,5 +1,5 @@
 import type { Db } from '../../src/db/db.js';
-import { applyRun, stageItems } from '../../src/db/store.js';
+import { applyRun, stageItems, upsertLatestPrices } from '../../src/db/store.js';
 import { handleEvent, verifySignature, type BotDeps, type LineEvent } from '../../src/bot/handler.js';
 import { parseFeedRow, type ParsedItem } from '../../src/feed/parseRow.js';
 import { makeFeedRecord } from '../helpers/feedRecord.js';
@@ -87,4 +87,19 @@ test('verifySignature accepts LINE HMAC-SHA256 base64 and rejects others', async
   expect(await verifySignature(body, sig, 'secret')).toBe(true);
   expect(await verifySignature(body, sig, 'other')).toBe(false);
   expect(await verifySignature(body, null, 'secret')).toBe(false);
+});
+
+test('an item with no history but a recent latest price gets the latest-price card', async () => {
+  await upsertLatestPrices(db, '2026-10-27', [item({ itemid: '9', shopid: '10', title: 'แอร์ Daikin FTKF12XV2S', model_ids: '91|92', model_names: 'a|b', model_prices: '15900|16900', image_link: 'https://cf.shopee.co.th/file/th-abc' })]);
+  const d = deps();
+  await handleEvent(textEvent('https://shopee.co.th/x-i.10.9'), d);
+  const msg = d.reply.mock.calls[0]![1][0];
+  expect(msg.type).toBe('flex');
+  const json = JSON.stringify(msg);
+  expect(json).toContain('฿15,900 – ฿16,900');
+  expect(json).toContain('ราคาล่าสุดที่เห็น 27 ต.ค.');
+  expect(json).toContain('ยังไม่มีประวัติราคา');
+  expect(json).toContain('https://cf.shopee.co.th/file/th-abc');
+  expect(json).toContain('origin_link=https%3A%2F%2Fshopee.co.th%2Fproduct%2F10%2F9');
+  expect((await db.query('select * from link_requests')).rows).toHaveLength(1);
 });

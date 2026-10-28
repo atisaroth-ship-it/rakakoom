@@ -78,7 +78,8 @@ test('applyScope uses the title weight when variant names have none', () => {
 test('committed scope has the approved rules and minimums', () => {
   const s = loadScope();
   const by = Object.fromEntries(s.rules.map(r => [r.name, r]));
-  expect(Object.keys(by)).toEqual(['mobile', 'electronics', 'home-garden-tools', 'water-tanks', 'pet-electric', 'cat-litter', 'pet-food']);
+  expect(Object.keys(by)).toEqual(['mobile', 'large-appliances', 'electronics', 'home-garden-tools', 'water-tanks', 'pet-electric', 'cat-litter', 'pet-food']);
+  expect(by['large-appliances']!).toMatchObject({ minSold: 2, category2: ['Large Household Appliances'] });
   expect(by['pet-electric']!.minSold).toBe(4);
   expect(by['pet-food']!).toMatchObject({ minSold: 10, minKg: 7 });
   for (const n of ['mobile', 'electronics', 'home-garden-tools', 'water-tanks', 'cat-litter']) expect(by[n]!.minSold).toBe(10);
@@ -97,4 +98,12 @@ test('committed scope: cables, switches and plugs are not collected; monitors ar
   expect(matchRule(rec({ global_category1: 'Home Appliances', global_category2: 'Electrical Circuitry & Parts', global_category3: 'Others', title: 'ปลั๊กไฟ 4 ช่อง' }), s)).toBeNull();
   expect(matchRule(rec({ global_category1: 'Home Appliances', global_category2: 'Kitchen Appliances', title: 'หม้อทอดไร้น้ำมัน' }), s)?.name).toBe('electronics');
   expect(matchRule(rec({ global_category1: 'Computers & Accessories', global_category2: 'Monitors', title: 'Samsung จอมอนิเตอร์ 27 นิ้ว' }), s)?.name).toBe('electronics');
+});
+
+test('committed scope: air conditioners and washing machines need only 2 sold', () => {
+  const s = loadScope();
+  const r = matchRule(rec({ global_category1: 'Home Appliances', global_category2: 'Large Household Appliances', global_category3: 'Washing Machines & Dryers', title: 'HAIER เครื่องซักผ้าฝาหน้า 18 kg' }), s);
+  expect(r?.name).toBe('large-appliances');
+  expect(applyScope(item({ item_sold: '2' }), r!)).not.toBeNull();
+  expect(applyScope(item({ item_sold: '1' }), r!)).toBeNull();
 });
