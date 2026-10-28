@@ -40,7 +40,8 @@ export interface ParsedItem {
   shop: ParsedShop;
 }
 
-export type SkipReason = 'out_of_scope' | 'no_brand' | 'bad_ids' | 'variant_mismatch' | 'bad_price';
+/** out_of_scope: category/title not collected; low_sales: below the rule's sold or weight limit. */
+export type SkipReason = 'out_of_scope' | 'low_sales' | 'no_brand' | 'bad_ids' | 'variant_mismatch' | 'bad_price';
 
 export type ParseResult = { ok: true; item: ParsedItem } | { ok: false; reason: SkipReason };
 

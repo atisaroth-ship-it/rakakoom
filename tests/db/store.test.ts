@@ -124,6 +124,16 @@ test('odd numeric values do not abort the apply', async () => {
   expect(it.rows).toEqual([{ item_sold: 3000000000 }]);
 });
 
+test('items do not store columns that can be rebuilt from ids or are unused', async () => {
+  await runDay('2026-10-27', [item()]);
+  const cols = (await db.query<{ column_name: string }>(
+    `select column_name from information_schema.columns where table_name = 'items'`)).rows.map(r => r.column_name);
+  expect(cols).not.toContain('attributes');
+  expect(cols).not.toContain('product_link');
+  expect(cols).not.toContain('affiliate_link');
+  expect(cols).toContain('image_link');
+});
+
 test('migrate is idempotent', async () => {
   await migrate(db);
   await migrate(db);

@@ -1,4 +1,44 @@
 {
-  "include": ["Mobile & Gadgets", "Home Appliances", "Computers & Accessories", "Cameras & Drones", "Audio", "Gaming & Consoles"],
-  "excludeCategory2": { "Mobile & Gadgets": ["Accessories"] }
+  "rules": [
+    {
+      "name": "mobile",
+      "category1": ["Mobile & Gadgets"],
+      "excludeCategory2": ["Accessories"],
+      "minSold": 10
+    },
+    {
+      "name": "electronics",
+      "category1": ["Home Appliances", "Computers & Accessories", "Cameras & Drones", "Audio", "Gaming & Consoles"],
+      "minSold": 10
+    },
+    {
+      "name": "home-garden-tools",
+      "category1": ["Home & Living"],
+      "category2": ["Tools & Home Improvement", "Gardening"],
+      "category3": ["Tools", "Water Pumps, Parts & Accessories", "Air Pumps, Parts & Accessories", "Lawn Mowers", "Irrigation Systems", "Gardening Tools"],
+      "minSold": 10
+    },
+    {
+      "name": "water-tanks",
+      "category1": ["Home & Living"],
+      "titlePattern": "แท็งก์น้ำ|แท้งค์น้ำ|แทงค์น้ำ|แท็งค์น้ำ|ถังเก็บน้ำ|water tank",
+      "minSold": 10
+    },
+    {
+      "name": "pet-electric",
+      "category1": ["Pets"],
+      "category2": ["Pet Accessories", "Litter & Toilet", "Pet Grooming"],
+      "category3": ["Bowls & Feeders", "Cat Litter & Boxes", "Hair Care", "Claw Care", "Others"],
+      "titlePattern": "อัตโนมัติ|auto|smart|ไฟฟ้า|usb|ชาร์จ|แบตเตอรี่|แบตเตอรี|mah|ไร้สาย|wireless|เป่าขน|ไดร์|dryer|ดูดขน|vacuum|น้ำพุ|น้ําพุ|fountain|feeder",
+      "excludeTitlePattern": "ทรายแมว|ทรายเต้าหู้|ทรายภูเขาไฟ|ทรายเบนโทไนท์|cat litter sand",
+      "minSold": 4
+    },
+    {
+      "name": "pet-food",
+      "category1": ["Pets"],
+      "category2": ["Pet Food"],
+      "minSold": 10,
+      "minKg": 7
+    }
+  ]
 }

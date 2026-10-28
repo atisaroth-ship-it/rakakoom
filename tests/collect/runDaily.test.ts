@@ -178,13 +178,14 @@ test('skips while another run is in progress', async () => {
   expect(open).not.toHaveBeenCalled();
 });
 
-test('out-of-scope rows are skipped but not counted as malformed', async () => {
-  const scope = { include: ['Audio'], excludeCategory2: {} };
-  const inside = many(10).map(r => ({ ...r, global_category1: 'Audio' }));
+test('out-of-scope and low-sales rows are skipped but not counted as malformed', async () => {
+  const scope = { rules: [{ name: 'audio', category1: ['Audio'], minSold: 10 }] };
+  const inside = many(10).map(r => ({ ...r, global_category1: 'Audio', item_sold: '12' }));
+  const lowSales = many(3, 200).map(r => ({ ...r, global_category1: 'Audio', item_sold: '9' }));
   const outside = many(5, 100).map(r => ({ ...r, global_category1: 'Home & Living' }));
-  const d = deps({ openFeed: feeds({ u1: [...inside, ...outside] }), scope });
+  const d = deps({ openFeed: feeds({ u1: [...inside, ...lowSales, ...outside] }), scope });
   const r = await runDaily(d);
-  expect(r).toMatchObject({ status: 'success', rowsKept: 10, skipped: { out_of_scope: 5 } });
+  expect(r).toMatchObject({ status: 'success', rowsKept: 10, skipped: { out_of_scope: 5, low_sales: 3 } });
   expect(d.alert).not.toHaveBeenCalled();
 });
 

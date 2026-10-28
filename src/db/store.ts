@@ -10,7 +10,8 @@ export interface ApplyStats {
 /** Stage one batch for a run. Sent as a single JSON parameter, so batch size never hits the bind-parameter limit. */
 export async function stageItems(db: Db, runId: number, items: ParsedItem[]): Promise<void> {
   if (items.length === 0) return;
-  const itemRows = items.map(({ variants: _variants, ...rest }) => rest);
+  // attributes and links are not stored (migration 003); leave them out of staging too.
+  const itemRows = items.map(({ variants: _v, attributes: _a, productLink: _p, affiliateLink: _l, ...rest }) => rest);
   const variantRows = items.flatMap(it => it.variants.map(v => ({ ...v, itemId: it.itemId })));
   await db.query(
     `insert into staging_items (run_id, item_id, data)
@@ -64,12 +65,12 @@ export async function applyRun(db: Db, runId: number, feedDate: string, prevDate
 
   const items = await db.query(
     `insert into items (item_id, shop_id, title, brand, category1, category2, category3, category_id1, category_id2,
-       category_id3, attributes, product_link, affiliate_link, image_link, item_rating, item_sold, stock, cross_border,
+       category_id3, image_link, item_rating, item_sold, stock, cross_border,
        condition, price_satang, sale_price_satang, discount_percentage, first_seen, last_seen)
      select item_id, (data->>'shopId')::bigint, data->>'title', data->>'brand',
             data->'categories'->>0, data->'categories'->>1, data->'categories'->>2,
             (data->'categoryIds'->>0)::bigint, (data->'categoryIds'->>1)::bigint, (data->'categoryIds'->>2)::bigint,
-            nullif(data->'attributes', 'null'::jsonb), data->>'productLink', data->>'affiliateLink', data->>'imageLink',
+            data->>'imageLink',
             (data->>'itemRating')::numeric, (data->>'itemSold')::bigint, (data->>'stock')::bigint, (data->>'crossBorder')::boolean,
             data->>'condition', (data->>'priceSatang')::bigint, (data->>'salePriceSatang')::bigint,
             (data->>'discountPercentage')::numeric, $1::date, $1::date
@@ -78,7 +79,6 @@ export async function applyRun(db: Db, runId: number, feedDate: string, prevDate
        shop_id = excluded.shop_id, title = excluded.title, brand = excluded.brand,
        category1 = excluded.category1, category2 = excluded.category2, category3 = excluded.category3,
        category_id1 = excluded.category_id1, category_id2 = excluded.category_id2, category_id3 = excluded.category_id3,
-       attributes = excluded.attributes, product_link = excluded.product_link, affiliate_link = excluded.affiliate_link,
        image_link = excluded.image_link, item_rating = excluded.item_rating, item_sold = excluded.item_sold,
        stock = excluded.stock, cross_border = excluded.cross_border, condition = excluded.condition,
        price_satang = excluded.price_satang, sale_price_satang = excluded.sale_price_satang,

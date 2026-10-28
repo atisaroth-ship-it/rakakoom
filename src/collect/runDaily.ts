@@ -4,7 +4,7 @@ import { applyRun, clearStaging, stageItems } from '../db/store.js';
 import type { FeedRecord } from '../feed/columns.js';
 import type { FeedMeta } from '../feed/openFeed.js';
 import { parseFeedRow, type ParsedItem, type SkipReason } from '../feed/parseRow.js';
-import { inScope, type CategoryScope } from '../feed/scope.js';
+import { applyScope, matchRule, type CategoryScope } from '../feed/scope.js';
 import { bangkokDate } from '../time.js';
 
 export interface RunDeps {
@@ -108,7 +108,8 @@ export async function runDaily(deps: RunDeps): Promise<RunResult> {
       for await (const record of deps.openFeed(url, onMeta)) {
         result.rowsRead++;
         fileRows[i]!++;
-        if (deps.scope && !inScope(record, deps.scope)) {
+        const rule = deps.scope ? matchRule(record, deps.scope) : null;
+        if (deps.scope && !rule) {
           result.skipped.out_of_scope = (result.skipped.out_of_scope ?? 0) + 1;
           continue;
         }
@@ -117,8 +118,13 @@ export async function runDaily(deps: RunDeps): Promise<RunResult> {
           result.skipped[parsed.reason] = (result.skipped[parsed.reason] ?? 0) + 1;
           continue;
         }
+        const item = rule ? applyScope(parsed.item, rule) : parsed.item;
+        if (!item) {
+          result.skipped.low_sales = (result.skipped.low_sales ?? 0) + 1;
+          continue;
+        }
         result.rowsKept++;
-        batch.push(parsed.item);
+        batch.push(item);
         if (batch.length >= batchSize) {
           await stageItems(db, runId, batch);
           await beat();
