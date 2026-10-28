@@ -1,0 +1,29 @@
+name: refresh latest prices (manual)
+
+# Fills only the latest-price table from today's feed (no price history). The daily collect run does this too.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Refresh latest prices
+        run: npx tsx src/collect/refreshLatestCli.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FEED_URLS: ${{ secrets.FEED_URLS }}
