@@ -27,6 +27,8 @@ test('resolveItemRef follows short-link redirects without reading pages', async 
   const fetchFn = vi.fn(async (u: string | URL | Request, init?: RequestInit) => {
     expect(init?.redirect).toBe('manual');
     expect(init?.method).toBe('HEAD');
+    // Without a User-Agent Shopee redirects short links to shope.ee/error_page.
+    expect((init?.headers as Record<string, string>)['User-Agent']).toMatch(/^RakaKoomBot\//);
     const to = hops[String(u)];
     return new Response(null, { status: to ? 302 : 200, headers: to ? { location: to } : {} });
   });

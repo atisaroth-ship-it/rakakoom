@@ -8,6 +8,8 @@ const URL_RE = /https?:\/\/[A-Za-z0-9\-._~:/?#[\]@!$&*+,;=%]+/gi;
 const TRAILING = /[.,;:!?]+$/;
 const SHOPEE_HOST = /^(?:[a-z0-9-]+\.)?(?:shopee\.co\.th|shope\.ee|shp\.ee)$/i;
 const MAX_HOPS = 5;
+/** Shopee sends requests without a User-Agent to shope.ee/error_page; identify honestly as the bot. */
+const USER_AGENT = 'RakaKoomBot/1.0 (+https://rakakoom-bot.atisa-roth.workers.dev)';
 
 export function extractShopeeUrls(text: string): string[] {
   return (text.match(URL_RE) ?? []).map(u => u.replace(TRAILING, '')).filter(u => {
@@ -61,12 +63,16 @@ export async function resolveItemRef(url: string, fetchFn: typeof fetch = fetch)
     if (direct) return direct;
     let res: Response;
     try {
-      res = await fetchFn(current, { method: 'HEAD', redirect: 'manual' });
+      res = await fetchFn(current, { method: 'HEAD', redirect: 'manual', headers: { 'User-Agent': USER_AGENT } });
     } catch {
       return null;
     }
     const next = res.headers.get('location');
-    if (res.status < 300 || res.status >= 400 || !next) return null;
+    if (res.status < 300 || res.status >= 400 || !next) {
+      // Status and host/path only, so a blocked or changed redirect can be diagnosed from the logs.
+      console.log('short link stopped', res.status, new URL(current).host + new URL(current).pathname, next ? new URL(next, current).host : '-');
+      return null;
+    }
     current = new URL(next, current).toString();
   }
   return parseItemRef(current);
