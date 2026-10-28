@@ -138,3 +138,12 @@ test('migrate is idempotent', async () => {
   await migrate(db);
   await migrate(db);
 });
+
+test('latest-price titles are cut without splitting an emoji', async () => {
+  const { upsertLatestPrices } = await import('../../src/db/store.js');
+  const title = 'ก'.repeat(79) + '😺หนังสือเด็ก';            // emoji straddles the 80-unit cut
+  await upsertLatestPrices(db, '2026-10-28', [item({ title })]);
+  const r = await db.query<{ title: string }>('select title from latest_prices');
+  expect(r.rows[0]!.title.isWellFormed()).toBe(true);
+  expect(r.rows[0]!.title.startsWith('ก'.repeat(79))).toBe(true);
+});

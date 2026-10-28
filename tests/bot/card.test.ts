@@ -81,3 +81,10 @@ test('card: an older price is labelled with its date', () => {
   const json = JSON.stringify(buildReplyCard({ report, variant: stale, alternatives: [], affiliateId: '1' }));
   expect(json).toContain('ราคาล่าสุดที่บันทึกได้ 26 ต.ค.');
 });
+
+test('card text is shortened without splitting emoji', () => {
+  const long = { ...report, title: 'ก'.repeat(78) + '😺😺😺 หูฟัง' };
+  const json = JSON.stringify(buildReplyCard({ report: long, variant: long.variants[0]!, alternatives: [], affiliateId: '1' }));
+  expect(json.isWellFormed()).toBe(true);
+  expect(JSON.parse(json).contents.body.contents[0].text.isWellFormed()).toBe(true);
+});

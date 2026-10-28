@@ -41,7 +41,11 @@ const INK = '#0E3B2C';
 const GREEN = '#1FA463';
 const MUTED = '#6B7D74';
 const text = (t: string, o: Record<string, unknown> = {}) => ({ type: 'text', text: t, wrap: true, size: 'sm', color: INK, ...o });
-const cut = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
+/** Shorten by code point so an emoji is never split (LINE rejects broken text). */
+const cut = (s: string, n: number) => {
+  const cps = [...s];
+  return cps.length > n ? cps.slice(0, n - 1).join('') + '…' : s;
+};
 
 export function buildLatestCard(lp: LatestPrice, affiliateId: string) {
   const price = lp.minPriceSatang === lp.maxPriceSatang ? baht(lp.minPriceSatang) : `${baht(lp.minPriceSatang)} – ${baht(lp.maxPriceSatang)}`;

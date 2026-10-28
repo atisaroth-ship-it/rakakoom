@@ -156,7 +156,8 @@ export async function upsertLatestPrices(db: Db, feedDate: string, items: Parsed
   const rows = items.map(it => {
     const prices = it.variants.map(v => v.priceSatang);
     return {
-      itemId: it.itemId, shopId: it.shopId, title: it.title.slice(0, LATEST_TITLE_CHARS), brand: it.brand,
+      itemId: it.itemId, shopId: it.shopId, // cut by code point so an emoji is never split (Postgres rejects lone surrogates)
+      title: [...it.title].slice(0, LATEST_TITLE_CHARS).join('').toWellFormed(), brand: it.brand,
       category1: it.categories[0], imageKey: imageKey(it.imageLink), itemSold: it.itemSold,
       minPrice: Math.min(...prices), maxPrice: Math.max(...prices), variantCount: it.variants.length,
       shopName: it.shop.shopName, shopRating: it.shop.shopRating, penaltyScore: it.shop.penaltyScore,

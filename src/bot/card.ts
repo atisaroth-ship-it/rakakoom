@@ -13,7 +13,11 @@ const MUTED = '#6B7D74';
 const SOFT_GREEN = '#E3F4EA';
 const SOFT_YELLOW = '#FFF5D9';
 const SUB_ID = 'rakakoom-line';
-const cut = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
+/** Shorten by code point so an emoji is never split (LINE rejects broken text). */
+const cut = (s: string, n: number) => {
+  const cps = [...s];
+  return cps.length > n ? cps.slice(0, n - 1).join('') + '…' : s;
+};
 const text = (t: string, o: Record<string, unknown> = {}) => ({ type: 'text', text: t, wrap: true, size: 'sm', color: INK, ...o });
 const row = (left: string, right: string, o: Record<string, unknown> = {}) => ({
   type: 'box', layout: 'horizontal', contents: [text(left, { color: MUTED, flex: 5 }), text(right, { align: 'end', weight: 'bold', flex: 4, ...o })],

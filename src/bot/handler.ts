@@ -28,6 +28,9 @@ const WELCOME = `ยินดีต้อนรับสู่ราคาคุ
 const NO_DATA = 'ยังไม่มีข้อมูลสินค้านี้ 🙏 ราคาคุ้มเก็บราคาสินค้ายอดนิยมจากหมวดที่รองรับทุกวัน จดไว้แล้วว่ามีคนอยากรู้ราคาชิ้นนี้';
 const UNREADABLE = 'อ่านลิงก์นี้ไม่ได้ ลองกด "แชร์" ในแอป Shopee แล้วคัดลอกลิงก์สินค้ามาวางใหม่อีกครั้งนะ';
 
+/** By code point, so an emoji is never split. */
+const firstChars = (s: string, n: number) => [...s].slice(0, n).join('');
+
 const textMessage = (text: string, extra: Record<string, unknown> = {}) => ({ type: 'text', text, ...extra });
 
 async function answerVariant(report: ItemReport, variant: VariantReport, deps: BotDeps, token: string) {
@@ -55,7 +58,7 @@ async function answerItem(ref: ItemRef, deps: BotDeps, token: string) {
   await deps.reply(token, [textMessage('สินค้านี้มีหลายแบบ เลือกแบบที่สนใจ 👇', {
     quickReply: { items: choices.map(v => ({
       type: 'action',
-      action: { type: 'postback', label: v.name.slice(0, 20), data: `variant:${report.itemId}:${v.modelId}`, displayText: v.name.slice(0, 300) },
+      action: { type: 'postback', label: firstChars(v.name, 20), data: `variant:${report.itemId}:${v.modelId}`, displayText: firstChars(v.name, 300) },
     })) },
   })]);
 }
