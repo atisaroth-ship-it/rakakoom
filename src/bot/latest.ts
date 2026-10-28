@@ -3,6 +3,8 @@ import { shopBadge } from './badge.js';
 import { baht, thaiDate } from './format.js';
 import { affiliateLink } from './links.js';
 import { shopFromRow, type ShopInfo } from './report.js';
+import { codeLines } from './card.js';
+import { bangkokToday, codeFootnote, estimateCodes } from './codes.js';
 
 /** A product seen recently in the feed but without collected history (spec 11 fallback). */
 export interface LatestPrice {
@@ -47,10 +49,12 @@ const cut = (s: string, n: number) => {
   return cps.length > n ? cps.slice(0, n - 1).join('') + '…' : s;
 };
 
-export function buildLatestCard(lp: LatestPrice, affiliateId: string) {
+export function buildLatestCard(lp: LatestPrice, affiliateId: string, today: string = bangkokToday()) {
   const price = lp.minPriceSatang === lp.maxPriceSatang ? baht(lp.minPriceSatang) : `${baht(lp.minPriceSatang)} – ${baht(lp.maxPriceSatang)}`;
   const badge = shopBadge(lp.shop, lp.minPriceSatang, []);
   const link = affiliateLink({ shopId: lp.shopId, itemId: lp.itemId }, affiliateId, 'rakakoom-line');
+  // Cheapest variant: the price the code estimate starts from.
+  const codes = estimateCodes(lp.minPriceSatang, lp.shop.isOfficial, today);
   const bubble = {
     type: 'bubble',
     ...(lp.imageLink.startsWith('https://') ? { hero: { type: 'image', url: lp.imageLink, size: 'full', aspectRatio: '20:13', aspectMode: 'cover' } } : {}),
@@ -62,9 +66,11 @@ export function buildLatestCard(lp: LatestPrice, affiliateId: string) {
           text(`ราคาล่าสุดที่เห็น ${thaiDate(lp.lastSeen)}`, { color: MUTED, flex: 5 }),
           text(price, { align: 'end', weight: 'bold', size: 'md', flex: 5 }),
         ] },
+        ...(codes ? [{ type: 'box', layout: 'vertical', spacing: 'xs', contents: codeLines(codes) }] : []),
         text(`${badge.label} · ${badge.reason}`, { size: 'xs', margin: 'md' }),
         text('ยังไม่มีประวัติราคาของสินค้านี้ — เริ่มติดตามให้แล้ว ถ้าสินค้านี้อยู่ในหมวดที่เก็บประวัติ ครั้งหน้าจะเห็นราคาต่ำสุด/สูงสุด',
           { size: 'xxs', color: MUTED, margin: 'lg' }),
+        ...(codes ? [text(codeFootnote(codes), { size: 'xxs', color: MUTED })] : []),
       ],
     },
     footer: {

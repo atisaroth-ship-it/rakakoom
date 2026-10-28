@@ -2,8 +2,11 @@ import type { Db } from '../db/db.js';
 import { buildReplyCard } from './card.js';
 import { buildLatestCard, loadLatestPrice } from './latest.js';
 import { extractShopeeUrls, type ItemRef } from './links.js';
+import { loadDeals } from './deals.js';
+import { productCarousel } from './list.js';
 import { findSameModel } from './match.js';
 import { loadItemReport, type ItemReport, type VariantReport } from './report.js';
+import { searchProducts, searchWords } from './search.js';
 
 export interface LineEvent {
   type: string;
@@ -23,7 +26,12 @@ export interface BotDeps {
 /** LINE quick replies allow at most 13 buttons; labels at most 20 characters. */
 const MAX_CHOICES = 13;
 
-const HOW_TO = 'วางลิงก์สินค้า Shopee มาในแชทได้เลย ราคาคุ้มจะบอกราคาตอนนี้ ราคาต่ำสุดที่เคยบันทึก ร้านอื่นที่ขายรุ่นเดียวกันถูกกว่า และร้านไหนน่าไว้ใจ';
+const HOW_TO = 'วางลิงก์สินค้า Shopee มาในแชทได้เลย ราคาคุ้มจะบอกราคาตอนนี้ ราคาต่ำสุดที่เคยบันทึก ราคาหลังใช้โค้ด ร้านอื่นที่ขายรุ่นเดียวกันถูกกว่า และร้านไหนน่าไว้ใจ\n\nหรือพิมพ์ชื่อสินค้า เช่น "หูฟัง sony" เพื่อค้นหา หรือพิมพ์ "ดีลวันนี้" ดูของที่ราคาลดลงจริง';
+const NO_RESULTS = 'ไม่เจอสินค้าที่ชื่อตรงกัน ลองพิมพ์ยี่ห้อหรือรุ่นให้สั้นลง เช่น "แอร์ daikin" หรือวางลิงก์สินค้า Shopee มาเลย';
+const NO_DEALS = 'วันนี้ยังไม่เจอสินค้าที่ราคาลดลงจริงจากราคาที่บันทึกไว้ (ราคาคุ้มเทียบกับราคาที่เก็บเอง ไม่ใช่ราคาขีดฆ่าของร้าน) ลองใหม่พรุ่งนี้นะ';
+const DEALS_WORDS = /^(ดีล|ดีลวันนี้|ดีลเด็ด|deal|deals)$/i;
+/** Quick reply under answers, so the deals list is one tap away. */
+const MENU = { quickReply: { items: [{ type: 'action', action: { type: 'message', label: 'ดีลวันนี้', text: 'ดีลวันนี้' } }] } };
 const WELCOME = `ยินดีต้อนรับสู่ราคาคุ้ม 🛍️\n${HOW_TO}\n\nตอนนี้ดูได้: มือถือ เครื่องใช้ไฟฟ้า คอม กล้อง เครื่องเสียง เกม เครื่องมือบ้านและสวน เครื่องใช้ไฟฟ้าสัตว์เลี้ยง ทรายแมว และอาหารสัตว์ 7 กก. ขึ้นไป`;
 const NO_DATA = 'ยังไม่มีข้อมูลสินค้านี้ 🙏 ราคาคุ้มเก็บราคาสินค้ายอดนิยมจากหมวดที่รองรับทุกวัน จดไว้แล้วว่ามีคนอยากรู้ราคาชิ้นนี้';
 const UNREADABLE = 'อ่านลิงก์นี้ไม่ได้ ลองกด "แชร์" ในแอป Shopee แล้วคัดลอกลิงก์สินค้ามาวางใหม่อีกครั้งนะ';
@@ -63,14 +71,40 @@ async function answerItem(ref: ItemRef, deps: BotDeps, token: string) {
   })]);
 }
 
+/** Text without a link: the deals list, a product search, or the how-to. */
+async function answerText(said: string, deps: BotDeps, token: string) {
+  if (DEALS_WORDS.test(said.replace(/\s+/g, ''))) {
+    const deals = await loadDeals(deps.db);
+    await deps.reply(token, [deals.length
+      ? productCarousel(deals, deps.affiliateId, 'ราคาคุ้ม: ดีลวันนี้ ราคาลดลงจริง')
+      : textMessage(NO_DEALS, MENU)]);
+    return;
+  }
+  if (!searchWords(said).length) {
+    await deps.reply(token, [textMessage(HOW_TO, MENU)]);
+    return;
+  }
+  const started = Date.now();
+  const found = await searchProducts(deps.db, said);
+  console.log('search', { words: searchWords(said).length, results: found.length, ms: Date.now() - started });
+  await deps.reply(token, [found.length
+    ? productCarousel(found, deps.affiliateId, `ราคาคุ้ม: ผลค้นหา ${said}`)
+    : textMessage(NO_RESULTS, MENU)]);
+}
+
 export async function handleEvent(ev: LineEvent, deps: BotDeps): Promise<void> {
   const token = ev.replyToken;
   if (!token) return;
   if (ev.type === 'follow') {
-    await deps.reply(token, [textMessage(WELCOME)]);
+    await deps.reply(token, [textMessage(WELCOME, MENU)]);
     return;
   }
   if (ev.type === 'postback' && ev.postback) {
+    const it = /^item:(\d+):(\d+)$/.exec(ev.postback.data);
+    if (it) {
+      await answerItem({ itemId: Number(it[1]), shopId: Number(it[2]) }, deps, token);
+      return;
+    }
     const m = /^variant:(\d+):(\d+)$/.exec(ev.postback.data);
     if (!m) return;
     const report = await loadItemReport(deps.db, Number(m[1]));
@@ -80,9 +114,10 @@ export async function handleEvent(ev: LineEvent, deps: BotDeps): Promise<void> {
     return;
   }
   if (ev.type === 'message' && ev.message?.type === 'text') {
-    const url = extractShopeeUrls(ev.message.text ?? '')[0];
+    const said = (ev.message.text ?? '').trim();
+    const url = extractShopeeUrls(said)[0];
     if (!url) {
-      await deps.reply(token, [textMessage(HOW_TO)]);
+      await answerText(said, deps, token);
       return;
     }
     const ref = await deps.resolve(url);

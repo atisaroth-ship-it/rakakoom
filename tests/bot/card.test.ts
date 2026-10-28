@@ -56,7 +56,7 @@ const alt = (o: Partial<Alternative>): Alternative => ({
 });
 
 test('card: buy button goes to the cheapest non-red shop with the affiliate id', () => {
-  const msg = buildReplyCard({ report, variant: report.variants[0]!, alternatives: [alt({}), alt({ itemId: 3, shopId: 30, priceSatang: 600000, shop: shop({ shopId: 30, name: 'ร้านเสี่ยง', penaltyScore: 5 }) })], affiliateId: '15311240105' });
+  const msg = buildReplyCard({ report, variant: report.variants[0]!, alternatives: [alt({}), alt({ itemId: 3, shopId: 30, priceSatang: 600000, shop: shop({ shopId: 30, name: 'ร้านเสี่ยง', penaltyScore: 5 }) })], affiliateId: '15311240105', today: '2026-12-01' });
   const json = JSON.stringify(msg);
   expect(msg.type).toBe('flex');
   expect(msg.altText).toContain('Sony WH-1000XM5');
@@ -87,4 +87,15 @@ test('card text is shortened without splitting emoji', () => {
   const json = JSON.stringify(buildReplyCard({ report: long, variant: long.variants[0]!, alternatives: [], affiliateId: '1' }));
   expect(json.isWellFormed()).toBe(true);
   expect(JSON.parse(json).contents.body.contents[0].text.isWellFormed()).toBe(true);
+});
+
+test('card: during 11.11 days it shows estimated code prices from the 2025 table, labelled as estimates', () => {
+  // ฿11,490 at a non-Mall shop: 22% capped at 2000 → ฿9,490 (17% would give 1953 off); VIP codes do not beat it, so no max row
+  const json = JSON.stringify(buildReplyCard({ report, variant: report.variants[0]!, alternatives: [], affiliateId: '1', today: '2026-11-11' }));
+  expect(json).toContain('ใช้โค้ด 11.11 ที่ทุกคนใช้ได้');
+  expect(json).toContain('฿9,490');
+  expect(json).toContain('โค้ดหน้ากิจกรรม ลด 22%');
+  expect(json).not.toContain('ลดมากสุด');
+  expect(json).toContain('ราคาประเมินช่วง 11.11 (อิงโค้ด 11.11 ปี 68)');
+  expect(json).not.toContain('ยังไม่มีข้อมูลโค้ด');
 });

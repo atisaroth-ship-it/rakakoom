@@ -4,6 +4,7 @@ import type { Alternative } from './match.js';
 import type { ItemReport, ShopInfo, VariantReport } from './report.js';
 import { baht, thaiDate } from './format.js';
 import { verdict } from './verdict.js';
+import { bangkokToday, codeFootnote, codeRows, estimateCodes } from './codes.js';
 
 export { baht, thaiDate };
 
@@ -23,6 +24,14 @@ const row = (left: string, right: string, o: Record<string, unknown> = {}) => ({
   type: 'box', layout: 'horizontal', contents: [text(left, { color: MUTED, flex: 5 }), text(right, { align: 'end', weight: 'bold', flex: 4, ...o })],
 });
 
+/** Code-price rows; without a campaign the row says there is no code data (spec 11). */
+export function codeLines(codes: ReturnType<typeof estimateCodes>) {
+  return codeRows(codes).flatMap(r => [
+    row(r.left, r.right, codes && r.right.startsWith('฿') ? { color: GREEN } : { weight: 'regular', color: MUTED }),
+    ...(r.note ? [text(r.note, { size: 'xxs', color: MUTED, align: 'end' })] : []),
+  ]);
+}
+
 interface Offer {
   itemId: number;
   shopId: number;
@@ -37,10 +46,12 @@ export interface CardInput {
   variant: VariantReport;
   alternatives: Alternative[];
   affiliateId: string;
+  /** Bangkok date that picks the code campaign; defaults to now */
+  today?: string;
 }
 
 /** The chat card (LINE Flex Message) from spec 7 / 11, without the chart and code-price parts of v1. */
-export function buildReplyCard({ report, variant, alternatives, affiliateId }: CardInput) {
+export function buildReplyCard({ report, variant, alternatives, affiliateId, today = bangkokToday() }: CardInput) {
   const peers = alternatives.map(a => a.priceSatang).concat(variant.priceSatang);
   const offers: Offer[] = [
     { itemId: report.itemId, shopId: report.shopId, shop: report.shop, priceSatang: variant.priceSatang, mine: true,
@@ -54,6 +65,7 @@ export function buildReplyCard({ report, variant, alternatives, affiliateId }: C
   const v = verdict(variant, report.firstRecorded);
   const stale = variant.lastSeen < report.latestRecorded;
   const link = affiliateLink({ shopId: best.shopId, itemId: best.itemId }, affiliateId, SUB_ID);
+  const codes = estimateCodes(variant.priceSatang, report.shop.isOfficial, today);
 
   const cheaper = offers.filter(o => !o.mine && o.priceSatang < mine.priceSatang).slice(0, 3);
   const others = cheaper.length
@@ -78,11 +90,12 @@ export function buildReplyCard({ report, variant, alternatives, affiliateId }: C
           row(stale ? `ราคาล่าสุดที่บันทึกได้ ${thaiDate(variant.lastSeen)}` : 'ราคาตอนนี้', baht(variant.priceSatang), { size: 'md' }),
           row(`ต่ำสุด (${thaiDate(variant.low.date)})`, baht(variant.low.priceSatang)),
           row(`สูงสุด (${thaiDate(variant.high.date)})`, baht(variant.high.priceSatang)),
-          row('ราคาใช้โค้ด', 'ยังไม่มีข้อมูลโค้ด', { weight: 'regular', color: MUTED }),
+          ...codeLines(codes),
         ] },
         text(`${mine.badge.label} · ${mine.badge.reason}`, { size: 'xs', margin: 'md' }),
         ...others,
         text(`ประวัติราคาตั้งแต่เริ่มบันทึก ${thaiDate(report.firstRecorded)}`, { size: 'xxs', color: MUTED, margin: 'lg' }),
+        ...(codes ? [text(codeFootnote(codes), { size: 'xxs', color: MUTED })] : []),
       ],
     },
     footer: {
