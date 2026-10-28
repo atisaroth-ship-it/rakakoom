@@ -106,6 +106,14 @@ export function parseFeedRow(raw: FeedRecord): ParseResult {
     variants.push({ modelId, name: names[i]!, priceSatang });
   }
 
+  // model_prices are list prices; the app shows the discounted price (item-level sale_price).
+  // Apply the item's discount to every variant (exact for single-variant items).
+  const listSatang = toSatang(r.price ?? '');
+  const saleSatang = toSatang(r.sale_price ?? '');
+  if (listSatang && saleSatang && saleSatang < listSatang) {
+    for (const v of variants) v.priceSatang = Math.round((v.priceSatang * saleSatang) / listSatang);
+  }
+
   let attributes: unknown = null;
   try {
     attributes = r.global_item_attributes ? cleanDeep(JSON.parse(r.global_item_attributes)) : null;

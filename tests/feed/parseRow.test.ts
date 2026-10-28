@@ -47,3 +47,12 @@ test('toSatang avoids float error', () => {
   expect(toSatang('19.99')).toBe(1999);
   expect(toSatang('abc')).toBeNull();
 });
+
+test('variant prices are the discounted price the app shows, not the list price', () => {
+  const one = parseFeedRow(makeFeedRecord({ model_prices: '700.0', price: '700', sale_price: '599', discount_percentage: '14' }));
+  expect(one.ok && one.item.variants[0]!.priceSatang).toBe(59900);
+  const many = parseFeedRow(makeFeedRecord({ model_ids: '1|2', model_names: 'a|b', model_prices: '9170.0|12295.0', price: '9170', sale_price: '4690', discount_percentage: '49' }));
+  expect(many.ok && many.item.variants.map(v => v.priceSatang)).toEqual([469000, 628828]);
+  const none = parseFeedRow(makeFeedRecord({ model_prices: '360.0', price: '360', sale_price: '360', discount_percentage: '0' }));
+  expect(none.ok && none.item.variants[0]!.priceSatang).toBe(36000);
+});
