@@ -1,0 +1,10 @@
+name = "rakakoom-bot"
+main = "src/bot/worker.ts"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Not a secret: it appears in every affiliate link (Shopee Affiliate > การตั้งค่าบัญชี > พันธมิตร ID).
+AFFILIATE_ID = "15311240105"
+
+# Secrets (set with `npx wrangler secret put <NAME>`, never committed):
+#   DATABASE_URL, LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN
