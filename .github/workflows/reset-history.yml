@@ -1,0 +1,35 @@
+name: reset price history (manual)
+
+# One-off maintenance: deletes all price history (items, variants, price_changes, shops) so collecting
+# starts again. Keeps feed_runs, latest_prices and link_requests. Run the backup workflow first.
+# Manual only; type DELETE to confirm.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DELETE to confirm (run "backup database" first)'
+        required: true
+
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  reset:
+    if: inputs.confirm == 'DELETE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Delete all price history
+        run: npx tsx src/maintenance/resetHistoryCli.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

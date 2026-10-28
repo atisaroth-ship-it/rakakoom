@@ -62,8 +62,10 @@ export async function loadItemReport(db: Db, itemId: number): Promise<ItemReport
       where i.item_id = $1`, [itemId])).rows[0];
   if (!it) return null;
 
+  // "first" is the oldest stored price, not the oldest run: history was reset once (list prices, 28 Oct 2026).
   const range = (await db.query<{ first: string | null; latest: string | null }>(
-    `select to_char(min(feed_date), 'YYYY-MM-DD') as first, to_char(max(feed_date), 'YYYY-MM-DD') as latest
+    `select (select to_char(min(effective_date), 'YYYY-MM-DD') from price_changes) as first,
+            to_char(max(feed_date), 'YYYY-MM-DD') as latest
        from feed_runs where status in ('success', 'suspect')`)).rows[0]!;
 
   const variants = (await db.query<Record<string, unknown>>(
