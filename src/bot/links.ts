@@ -3,12 +3,14 @@ export interface ItemRef {
   itemId: number;
 }
 
-const URL_RE = /https?:\/\/[^\s<>"']+/gi;
+// ASCII URL characters only: Thai text, brackets or backticks glued to a link end it.
+const URL_RE = /https?:\/\/[A-Za-z0-9\-._~:/?#[\]@!$&*+,;=%]+/gi;
+const TRAILING = /[.,;:!?]+$/;
 const SHOPEE_HOST = /^(?:[a-z0-9-]+\.)?(?:shopee\.co\.th|shope\.ee|shp\.ee)$/i;
 const MAX_HOPS = 5;
 
 export function extractShopeeUrls(text: string): string[] {
-  return (text.match(URL_RE) ?? []).filter(u => {
+  return (text.match(URL_RE) ?? []).map(u => u.replace(TRAILING, '')).filter(u => {
     try {
       return SHOPEE_HOST.test(new URL(u).hostname);
     } catch {

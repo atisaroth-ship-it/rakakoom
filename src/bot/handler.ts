@@ -79,6 +79,11 @@ export async function handleEvent(ev: LineEvent, deps: BotDeps): Promise<void> {
     }
     const ref = await deps.resolve(url);
     if (!ref) {
+      // Host and path only (no query string) so the cause can be found in the logs.
+      try {
+        const u = new URL(url);
+        console.log('unreadable link', u.host + u.pathname);
+      } catch { /* not a URL */ }
       await deps.reply(token, [textMessage(UNREADABLE)]);
       return;
     }

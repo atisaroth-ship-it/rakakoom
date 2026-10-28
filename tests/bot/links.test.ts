@@ -5,6 +5,12 @@ test('extractShopeeUrls finds Shopee links in a chat message', () => {
   expect(extractShopeeUrls(text)).toEqual(['https://shopee.co.th/Sony-WH-1000XM5-i.123456.789012?sp_atk=x', 'https://s.shopee.co.th/AbCd12']);
 });
 
+test('extractShopeeUrls stops at Thai text or brackets glued to the link', () => {
+  expect(extractShopeeUrls('https://shopee.co.th/product/1382961114/26264722963ราคาเท่าไหร่')).toEqual(['https://shopee.co.th/product/1382961114/26264722963']);
+  expect(extractShopeeUrls('(https://s.shopee.co.th/AbCd12)')).toEqual(['https://s.shopee.co.th/AbCd12']);
+  expect(extractShopeeUrls('`https://shopee.co.th/product/1/2`')).toEqual(['https://shopee.co.th/product/1/2']);
+});
+
 test('parseItemRef reads the common Shopee product URL forms', () => {
   expect(parseItemRef('https://shopee.co.th/Sony-WH-1000XM5-i.123456.789012?sp_atk=x')).toEqual({ shopId: 123456, itemId: 789012 });
   expect(parseItemRef('https://shopee.co.th/product/101487342/53001999315')).toEqual({ shopId: 101487342, itemId: 53001999315 });
