@@ -37,3 +37,15 @@ test('Bangkok date rolls over at 17:00 UTC', () => {
   expect(bangkokToday(new Date('2026-11-10T16:59:00Z'))).toBe('2026-11-10');
   expect(bangkokToday(new Date('2026-11-10T17:00:00Z'))).toBe('2026-11-11');
 });
+
+test('Xtra shop codes show a separate "if the shop is in Xtra" price only when they beat the platform codes', () => {
+  // ฿10,000 non-Mall: platform 17% capped 3000 → ฿7,000; Xtra 30% capped 2000 → ฿8,000, so no Xtra row
+  expect(estimateCodes(10000 * B, false, '2026-11-09')!.xtra).toBeNull();
+  // ฿3,000 non-Mall: platform 22% capped 2000 → 660 off → ฿2,340; Xtra 30% → 900 off → ฿2,100 wins
+  const e = estimateCodes(3000 * B, false, '2026-11-09')!;
+  expect(e.everyone!.priceSatang).toBe(2340 * B);
+  expect(e.xtra).toMatchObject({ priceSatang: 2100 * B, code: { percent: 30 } });
+  const last = codeRows(e).at(-1)!;
+  expect(last.left).toBe('ถ้าร้านนี้ร่วม Xtra');
+  expect(last.note).toContain('เฉพาะร้านที่ร่วม Xtra');
+});

@@ -12,6 +12,14 @@ export interface PlatformCode {
   condition?: string;
 }
 
+/** Shop codes of shops in Shopee's "ร้านโค้ดคุ้ม Xtra" programme; the feed does not say which shops take part. */
+export interface XtraCode {
+  label: string;
+  percent: number;
+  minSatang: number;
+  capSatang: number;
+}
+
 export interface CodeCampaign {
   name: string;
   /** Bangkok dates, inclusive: the card shows estimates for this campaign on these days */
@@ -20,6 +28,8 @@ export interface CodeCampaign {
   /** where the codes come from, shown on the card */
   basis: string;
   codes: PlatformCode[];
+  /** Xtra shop codes of this campaign; a price "if the shop is in Xtra", never counted as a code everyone can use */
+  xtra?: XtraCode[];
 }
 
 const B = 100;
@@ -46,6 +56,12 @@ export const CAMPAIGNS: CodeCampaign[] = [{
     { label: 'โค้ด VIP ลด 90%', percent: 90, minSatang: 150 * B, capSatang: 150 * B, condition: 'สมาชิก Shopee VIP · เที่ยงคืน–ตีสอง' },
     { label: 'โค้ด VIP ลด 50%', percent: 50, minSatang: 200 * B, capSatang: 120 * B, condition: 'สมาชิก Shopee VIP' },
   ],
+  // From shopee.co.th/m/11-11, read 9 Nov 2026 (valid to 11 Nov). The 33% code (min 3 items) is left out:
+  // the estimate is for one item.
+  xtra: [
+    { label: 'โค้ดร้านโค้ดคุ้ม Xtra ลด 30%', percent: 30, minSatang: 1000 * B, capSatang: 2000 * B },
+    { label: 'โค้ดร้านโค้ดคุ้ม Xtra ลด 25%', percent: 25, minSatang: 200 * B, capSatang: 500 * B },
+  ],
 }];
 
 export interface CodePrice {
@@ -59,6 +75,8 @@ export interface CodeEstimate {
   everyone: CodePrice | null;
   /** best code overall; only set when it beats `everyone` */
   best: CodePrice | null;
+  /** best Xtra shop code; only set when it beats `everyone` (and `best`) and only valid at Xtra shops */
+  xtra: CodePrice | null;
 }
 
 const discount = (c: PlatformCode, priceSatang: number) => Math.min(Math.round((priceSatang * c.percent) / 100), c.capSatang);
@@ -95,7 +113,10 @@ export function estimateCodes(priceSatang: number, isMall: boolean, today: strin
   const everyone = bestOf(campaign.codes.filter(c => !c.condition), priceSatang, isMall);
   const any = bestOf(campaign.codes, priceSatang, isMall);
   const best = any && (!everyone || any.priceSatang < everyone.priceSatang) ? any : null;
-  return { campaign, everyone, best };
+  const xtraBest = bestOf((campaign.xtra ?? []).map(x => ({ ...x })), priceSatang, true);
+  const floor = Math.min(everyone?.priceSatang ?? Infinity, any?.priceSatang ?? Infinity);
+  const xtra = xtraBest && xtraBest.priceSatang < floor ? xtraBest : null;
+  return { campaign, everyone, best, xtra };
 }
 
 /** Card rows for the code prices: [left, right, note] — the note says which code and its condition. */
@@ -109,6 +130,7 @@ export function codeRows(est: CodeEstimate | null): { left: string; right: strin
   if (est.best) {
     rows.push({ left: `ใช้โค้ด ${n} ลดมากสุด`, right: baht(est.best.priceSatang), note: `${est.best.code.label} · ${est.best.code.condition ?? ''}`.replace(/ · $/, '') });
   }
+  if (est.xtra) rows.push({ left: 'ถ้าร้านนี้ร่วม Xtra', right: baht(est.xtra.priceSatang), note: `${est.xtra.code.label} · ใช้ได้เฉพาะร้านที่ร่วม Xtra` });
   return rows;
 }
 
