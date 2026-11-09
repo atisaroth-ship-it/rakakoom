@@ -113,10 +113,11 @@ export function buildReplyCard({ report, variant, alternatives, affiliateId, tod
       ],
     },
     footer: {
-      type: 'box', layout: 'vertical', contents: [{
-        type: 'button', style: 'primary', color: GREEN, height: 'md',
-        action: { type: 'uri', label: cut(`ซื้อ${best.mine ? 'ร้านนี้' : 'ร้านที่ถูกกว่า'} ${baht(best.priceSatang)}`, 40), uri: link },
-      }],
+      type: 'box', layout: 'vertical', spacing: 'sm', contents: [
+        text('ราคาจากฟีดร้านค้า ราคาจริงอาจต่ำกว่านี้ถ้ามีแฟลชเซลล์หรือโค้ดร้าน', { size: 'xxs', color: MUTED, align: 'center' }),
+        { type: 'button', style: 'primary', color: GREEN, height: 'md',
+          action: { type: 'uri', label: cut(`ดู${best.mine ? 'ที่ร้านนี้' : 'ร้านที่ถูกกว่า'} (ราคาฟีด ${baht(best.priceSatang)})`, 40), uri: link } },
+      ],
     },
   };
   return { type: 'flex' as const, altText: cut(`ราคาคุ้ม: ${report.title}`, 380), contents: bubble };
