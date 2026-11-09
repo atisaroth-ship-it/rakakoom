@@ -54,14 +54,28 @@ async function ownerEntries(deps: BotDeps, itemId: number, today: string): Promi
   return { daily, recorded };
 }
 
+/** Logs how long a step took, so a slow answer can be traced to its query. */
+async function timed<T>(label: string, work: Promise<T>): Promise<T> {
+  const started = Date.now();
+  try {
+    return await work;
+  } finally {
+    console.log('step', label, `${Date.now() - started}ms`);
+  }
+}
+
 async function answerVariant(report: ItemReport, variant: VariantReport, deps: BotDeps, token: string) {
   const today = bangkokToday();
-  const [alternatives, owner] = await Promise.all([findSameModel(deps.db, report, variant), ownerEntries(deps, report.itemId, today)]);
+  const [alternatives, owner] = await Promise.all([
+    timed('findSameModel', findSameModel(deps.db, report, variant)),
+    timed('ownerEntries', ownerEntries(deps, report.itemId, today)),
+  ]);
+  console.log('variant answer', { itemId: report.itemId, variant: variant.modelId, alternatives: alternatives.length });
   await deps.reply(token, [buildReplyCard({ report, variant, alternatives, affiliateId: deps.affiliateId, today, ...owner })]);
 }
 
 async function answerItem(ref: ItemRef, deps: BotDeps, token: string) {
-  const report = await loadItemReport(deps.db, ref.itemId);
+  const report = await timed('loadItemReport', loadItemReport(deps.db, ref.itemId));
   if (!report || report.variants.length === 0) {
     await deps.db.query('insert into link_requests (item_id, shop_id) values ($1, $2)', [ref.itemId, ref.shopId])
       .catch(err => console.error('link_requests insert failed', err));
@@ -138,7 +152,7 @@ export async function handleEvent(ev: LineEvent, deps: BotDeps): Promise<void> {
     }
     const m = /^variant:(\d+):(\d+)$/.exec(ev.postback.data);
     if (!m) return;
-    const report = await loadItemReport(deps.db, Number(m[1]));
+    const report = await timed('loadItemReport', loadItemReport(deps.db, Number(m[1])));
     const variant = report?.variants.find(v => v.modelId === Number(m[2]));
     if (report && variant) await answerVariant(report, variant, deps, token);
     else await deps.reply(token, [textMessage(NO_DATA)]);
