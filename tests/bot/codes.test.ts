@@ -38,14 +38,28 @@ test('Bangkok date rolls over at 17:00 UTC', () => {
   expect(bangkokToday(new Date('2026-11-10T17:00:00Z'))).toBe('2026-11-11');
 });
 
-test('Xtra shop codes show a separate "if the shop is in Xtra" price only when they beat the platform codes', () => {
-  // ฿10,000 non-Mall: platform 17% capped 3000 → ฿7,000; Xtra 30% capped 2000 → ฿8,000, so no Xtra row
+test('Xtra shop codes show a separate price only when they beat the platform codes', () => {
+  // ฿10,000 non-Mall: platform 17% capped 3000 → ฿7,000; Xtra 30% → ฿8,000; Xtra 33% x3 (cap 1,111) → ฿9,630 per piece,
+  // so no Xtra row
   expect(estimateCodes(10000 * B, false, '2026-11-09')!.xtra).toBeNull();
-  // ฿3,000 non-Mall: platform 22% capped 2000 → 660 off → ฿2,340; Xtra 30% → 900 off → ฿2,100 wins
+  // ฿3,000 non-Mall: platform 22% capped 2000 → ฿2,340; Xtra 30% → ฿2,100 wins
   const e = estimateCodes(3000 * B, false, '2026-11-09')!;
   expect(e.everyone!.priceSatang).toBe(2340 * B);
   expect(e.xtra).toMatchObject({ priceSatang: 2100 * B, code: { percent: 30 } });
   const last = codeRows(e).at(-1)!;
   expect(last.left).toBe('ถ้าร้านนี้ร่วม Xtra');
   expect(last.note).toContain('เฉพาะร้านที่ร่วม Xtra');
+});
+
+test('Xtra 33% needs 3 pieces and is shown per piece; the 11-minute 20% code counts for big prices', () => {
+  // ฿20 x3 = 60, 33% = 19.8 (cap 1111) → 40.2/3 = ฿13.40 per piece; platform codes need ฿200 minimum
+  const small = estimateCodes(20 * B, false, '2026-11-09')!;
+  expect(small.xtra).toMatchObject({ priceSatang: 1340, code: { percent: 33, minQty: 3 } });
+  const row = codeRows(small).at(-1)!;
+  expect(row.left).toBe('ถ้าซื้อ 3 ชิ้น ที่ร้านร่วม Xtra');
+  expect(row.right).toBe('฿13.40/ชิ้น');
+  // ฿20,000 non-Mall: platform 17% capped 3000 → ฿17,000; Xtra 20% (min 1,111) → ฿16,000 wins, with its time condition
+  const big = estimateCodes(20000 * B, false, '2026-11-09')!;
+  expect(big.xtra).toMatchObject({ priceSatang: 16000 * B, code: { percent: 20 } });
+  expect(codeRows(big).at(-1)!.note).toContain('11 นาทีทอง');
 });

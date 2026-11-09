@@ -10,14 +10,8 @@ export interface PlatformCode {
   mallOnly?: boolean;
   /** a condition not everyone meets (e.g. Shopee VIP); such codes only count toward the max-code price */
   condition?: string;
-}
-
-/** Shop codes of shops in Shopee's "ร้านโค้ดคุ้ม Xtra" programme; the feed does not say which shops take part. */
-export interface XtraCode {
-  label: string;
-  percent: number;
-  minSatang: number;
-  capSatang: number;
+  /** needs this many pieces of the product in the order (the estimate divides the result per piece) */
+  minQty?: number;
 }
 
 export interface CodeCampaign {
@@ -29,7 +23,7 @@ export interface CodeCampaign {
   basis: string;
   codes: PlatformCode[];
   /** Xtra shop codes of this campaign; a price "if the shop is in Xtra", never counted as a code everyone can use */
-  xtra?: XtraCode[];
+  xtra?: PlatformCode[];
 }
 
 const B = 100;
@@ -56,16 +50,19 @@ export const CAMPAIGNS: CodeCampaign[] = [{
     { label: 'โค้ด VIP ลด 90%', percent: 90, minSatang: 150 * B, capSatang: 150 * B, condition: 'สมาชิก Shopee VIP · เที่ยงคืน–ตีสอง' },
     { label: 'โค้ด VIP ลด 50%', percent: 50, minSatang: 200 * B, capSatang: 120 * B, condition: 'สมาชิก Shopee VIP' },
   ],
-  // From shopee.co.th/m/11-11, read 9 Nov 2026 (valid to 11 Nov). The 33% code (min 3 items) is left out:
-  // the estimate is for one item.
+  // From shopee.co.th/m/11-11, read 9 Nov 2026 (valid to 11 Nov). Not counted: free-shipping codes, new-customer codes,
+  // SPayLater 0% instalments, ShopeeVIP partner perks (cinema, food) and the 1-hour delivery codes (all end 9 Nov or are not item discounts).
   xtra: [
+    { label: 'โค้ดร้านโค้ดคุ้ม Xtra ลด 33%', percent: 33, minSatang: 0, capSatang: 1111 * B, minQty: 3 },
     { label: 'โค้ดร้านโค้ดคุ้ม Xtra ลด 30%', percent: 30, minSatang: 1000 * B, capSatang: 2000 * B },
     { label: 'โค้ดร้านโค้ดคุ้ม Xtra ลด 25%', percent: 25, minSatang: 200 * B, capSatang: 500 * B },
+    { label: 'โค้ดร้านโค้ดคุ้ม Xtra ลด 20%', percent: 20, minSatang: 1111 * B, capSatang: 11111 * B, condition: 'ช่วง 11 นาทีทอง 2 ทุ่ม' },
   ],
 }];
 
 export interface CodePrice {
   code: PlatformCode;
+  /** per piece */
   priceSatang: number;
 }
 
@@ -80,6 +77,19 @@ export interface CodeEstimate {
 }
 
 const discount = (c: PlatformCode, priceSatang: number) => Math.min(Math.round((priceSatang * c.percent) / 100), c.capSatang);
+
+/** Best Xtra shop code; a minQty code is priced for that many pieces and shown per piece. */
+function bestXtra(codes: PlatformCode[], priceSatang: number): CodePrice | null {
+  let best: CodePrice | null = null;
+  for (const c of codes) {
+    const qty = c.minQty ?? 1;
+    const total = priceSatang * qty;
+    if (total < c.minSatang) continue;
+    const p = Math.round((total - discount(c, total)) / qty);
+    if (!best || p < best.priceSatang) best = { code: c, priceSatang: p };
+  }
+  return best;
+}
 
 /** One platform code per order, so the best single code wins (codes in one table do not stack). */
 function bestOf(codes: PlatformCode[], priceSatang: number, isMall: boolean): CodePrice | null {
@@ -113,7 +123,7 @@ export function estimateCodes(priceSatang: number, isMall: boolean, today: strin
   const everyone = bestOf(campaign.codes.filter(c => !c.condition), priceSatang, isMall);
   const any = bestOf(campaign.codes, priceSatang, isMall);
   const best = any && (!everyone || any.priceSatang < everyone.priceSatang) ? any : null;
-  const xtraBest = bestOf((campaign.xtra ?? []).map(x => ({ ...x })), priceSatang, true);
+  const xtraBest = bestXtra(campaign.xtra ?? [], priceSatang);
   const floor = Math.min(everyone?.priceSatang ?? Infinity, any?.priceSatang ?? Infinity);
   const xtra = xtraBest && xtraBest.priceSatang < floor ? xtraBest : null;
   return { campaign, everyone, best, xtra };
@@ -130,7 +140,15 @@ export function codeRows(est: CodeEstimate | null): { left: string; right: strin
   if (est.best) {
     rows.push({ left: `ใช้โค้ด ${n} ลดมากสุด`, right: baht(est.best.priceSatang), note: `${est.best.code.label} · ${est.best.code.condition ?? ''}`.replace(/ · $/, '') });
   }
-  if (est.xtra) rows.push({ left: 'ถ้าร้านนี้ร่วม Xtra', right: baht(est.xtra.priceSatang), note: `${est.xtra.code.label} · ใช้ได้เฉพาะร้านที่ร่วม Xtra` });
+  if (est.xtra) {
+    const c = est.xtra.code;
+    const qty = c.minQty ?? 1;
+    rows.push({
+      left: qty > 1 ? `ถ้าซื้อ ${qty} ชิ้น ที่ร้านร่วม Xtra` : 'ถ้าร้านนี้ร่วม Xtra',
+      right: qty > 1 ? `${baht(est.xtra.priceSatang)}/ชิ้น` : baht(est.xtra.priceSatang),
+      note: `${c.label}${c.condition ? ` · ${c.condition}` : ''} · ใช้ได้เฉพาะร้านที่ร่วม Xtra`,
+    });
+  }
   return rows;
 }
 
