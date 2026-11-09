@@ -16,25 +16,31 @@ export interface SearchPage {
   more: boolean;
 }
 
+/** Title and brand without spaces and hyphens, lower-cased; the same expression as the index in migration 007. */
+const SEARCH_TEXT = `replace(replace(lower(title || ' ' || brand), ' ', ''), '-', '')`;
+
 /**
  * Products whose title or brand contains every word, best sellers first, one product per shop (its best seller).
  * Only products seen in the feed recently (latest_prices), so every result has a current price. Thai has no
- * spaces between words, so this is a substring match, not word search. `offset` pages through the results.
+ * spaces between words, so this is a substring match, not word search; spaces and hyphens in titles are ignored.
+ * `offset` pages through the results.
  */
 export async function searchProducts(db: Db, q: string, offset = 0): Promise<SearchPage> {
-  const words = searchWords(q);
+  // Hyphens are ignored on both sides; a word that is only hyphens drops out.
+  const words = searchWords(q).map(w => w.replace(/-/g, '')).filter(w => w);
   if (!words.length) return { products: [], more: false };
+  const where = words.map((_, i) => `${SEARCH_TEXT} like $${i + 1}`).join(' and ');
   const rows = (await db.query<Record<string, unknown>>(
     `select * from (
        select distinct on (shop_id) item_id, shop_id, title, image_key, min_price_satang, max_price_satang, variant_count,
               item_sold, shop_name, shop_rating, penalty_score, is_official, is_preferred, holiday_mode
          from latest_prices
-        where lower(title || ' ' || brand) like all ($1::text[])
+        where ${where}
         order by shop_id, item_sold desc, item_id
      ) per_shop
      order by item_sold desc, item_id
-     limit ${MAX_BUBBLES + 1} offset $2`,
-    [words.map(w => `%${likeEscape(w)}%`), offset])).rows;
+     limit ${MAX_BUBBLES + 1} offset $${words.length + 1}`,
+    [...words.map(w => `%${likeEscape(w)}%`), offset])).rows;
   const products = rows.slice(0, MAX_BUBBLES).map(r => {
     const min = Number(r.min_price_satang);
     const max = Number(r.max_price_satang);

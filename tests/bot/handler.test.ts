@@ -187,3 +187,18 @@ test('search shows one product per shop (its best seller) and a "more" bubble pa
   await handleEvent({ type: 'postback', replyToken: 'R3', postback: { data: 'more:99:หูฟัง sony' } }, d);
   expect(d.reply.mock.calls[2]![1][0].text).toBe('ไม่มีสินค้าเพิ่มแล้ว');
 });
+
+test('search ignores spaces and hyphens in titles: "petfriendly" finds "Pet Friendly" and "Pet-Friendly"', async () => {
+  await upsertLatestPrices(db, '2026-10-28', [
+    item({ itemid: '1', shopid: '10', global_brand: 'Nordic', title: 'โซฟา Pet Friendly 3 ที่นั่ง', item_sold: '5' }),
+    item({ itemid: '2', shopid: '20', global_brand: 'Nordic', title: 'โซฟา Pet-Friendly ผ้ากันขีดข่วน', item_sold: '9' }),
+    item({ itemid: '3', shopid: '30', global_brand: 'Nordic', title: 'โซฟา หนัง 2 ที่นั่ง', item_sold: '99' }),
+  ]);
+  const d = deps();
+  await handleEvent(textEvent('โซฟา petfriendly'), d);
+  const bubbles = d.reply.mock.calls[0]![1][0].contents.contents.map((b: unknown) => JSON.stringify(b));
+  expect(bubbles).toHaveLength(2);
+  expect(bubbles[0]).toContain('ผ้ากันขีดข่วน');
+  await handleEvent(textEvent('pet-friendly'), d);
+  expect(d.reply.mock.calls[1]![1][0].contents.contents).toHaveLength(2);
+});
