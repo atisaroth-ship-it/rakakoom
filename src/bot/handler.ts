@@ -1,10 +1,12 @@
 import type { Db } from '../db/db.js';
 import { buildReplyCard } from './card.js';
+import { bangkokToday, type PlatformCode } from './codes.js';
 import { buildLatestCard, loadLatestPrice } from './latest.js';
 import { extractShopeeUrls, type ItemRef } from './links.js';
 import { loadDeals } from './deals.js';
 import { productCarousel } from './list.js';
 import { findSameModel } from './match.js';
+import { loadDailyCodes, loadRecordedPrice, OWNER_COMMAND, ownerReply, type RecordedPrice } from './owner.js';
 import { loadItemReport, type ItemReport, type VariantReport } from './report.js';
 import { searchProducts, searchWords } from './search.js';
 
@@ -21,6 +23,8 @@ export interface BotDeps {
   affiliateId: string;
   reply: (replyToken: string, messages: unknown[]) => Promise<void>;
   resolve: (url: string) => Promise<ItemRef | null>;
+  /** LINE user ids allowed to use the owner commands (บันทึก / โค้ด) */
+  adminIds?: string[];
 }
 
 /** LINE quick replies allow at most 13 buttons; labels at most 20 characters. */
@@ -41,9 +45,19 @@ const firstChars = (s: string, n: number) => [...s].slice(0, n).join('');
 
 const textMessage = (text: string, extra: Record<string, unknown> = {}) => ({ type: 'text', text, ...extra });
 
+/** What the owner entered (today's codes, the price she recorded); a lookup failure only drops these lines. */
+async function ownerEntries(deps: BotDeps, itemId: number, today: string): Promise<{ daily: PlatformCode[]; recorded: RecordedPrice | null }> {
+  const [daily, recorded] = await Promise.all([
+    loadDailyCodes(deps.db, today).catch(err => { console.error('daily codes lookup failed', err); return []; }),
+    loadRecordedPrice(deps.db, itemId).catch(err => { console.error('recorded price lookup failed', err); return null; }),
+  ]);
+  return { daily, recorded };
+}
+
 async function answerVariant(report: ItemReport, variant: VariantReport, deps: BotDeps, token: string) {
-  const alternatives = await findSameModel(deps.db, report, variant);
-  await deps.reply(token, [buildReplyCard({ report, variant, alternatives, affiliateId: deps.affiliateId })]);
+  const today = bangkokToday();
+  const [alternatives, owner] = await Promise.all([findSameModel(deps.db, report, variant), ownerEntries(deps, report.itemId, today)]);
+  await deps.reply(token, [buildReplyCard({ report, variant, alternatives, affiliateId: deps.affiliateId, today, ...owner })]);
 }
 
 async function answerItem(ref: ItemRef, deps: BotDeps, token: string) {
@@ -55,7 +69,9 @@ async function answerItem(ref: ItemRef, deps: BotDeps, token: string) {
       console.error('latest price lookup failed', err);
       return null;
     });
-    await deps.reply(token, [latest ? buildLatestCard(latest, deps.affiliateId) : textMessage(NO_DATA)]);
+    const today = bangkokToday();
+    const owner = latest ? await ownerEntries(deps, ref.itemId, today) : null;
+    await deps.reply(token, [latest && owner ? buildLatestCard(latest, deps.affiliateId, today, owner.daily, owner.recorded) : textMessage(NO_DATA)]);
     return;
   }
   if (report.variants.length === 1) {
@@ -115,6 +131,11 @@ export async function handleEvent(ev: LineEvent, deps: BotDeps): Promise<void> {
   }
   if (ev.type === 'message' && ev.message?.type === 'text') {
     const said = (ev.message.text ?? '').trim();
+    const userId = ev.source?.userId;
+    if (userId && deps.adminIds?.includes(userId) && OWNER_COMMAND.test(said)) {
+      await deps.reply(token, [textMessage(await ownerReply(said, { db: deps.db, resolve: deps.resolve, today: bangkokToday() }))]);
+      return;
+    }
     const url = extractShopeeUrls(said)[0];
     if (!url) {
       await answerText(said, deps, token);

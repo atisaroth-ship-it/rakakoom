@@ -78,8 +78,19 @@ export function campaignOn(today: string, campaigns: CodeCampaign[] = CAMPAIGNS)
   return campaigns.find(c => c.showFrom <= today && today <= c.showUntil) ?? null;
 }
 
-export function estimateCodes(priceSatang: number, isMall: boolean, today: string, campaigns: CodeCampaign[] = CAMPAIGNS): CodeEstimate | null {
-  const campaign = campaignOn(today, campaigns);
+/**
+ * Codes the owner entered for today join the campaign's table (still one code per order);
+ * on days without a campaign they make a table of their own.
+ */
+function withDaily(found: CodeCampaign | null, daily: PlatformCode[], today: string): CodeCampaign | null {
+  if (!daily.length) return found;
+  if (found) return { ...found, basis: `${found.basis} + โค้ดที่บันทึกไว้`, codes: [...found.codes, ...daily] };
+  return { name: 'วันนี้', showFrom: today, showUntil: today, basis: 'โค้ดที่บันทึกไว้', codes: daily };
+}
+
+export function estimateCodes(priceSatang: number, isMall: boolean, today: string, campaigns: CodeCampaign[] = CAMPAIGNS,
+  daily: PlatformCode[] = []): CodeEstimate | null {
+  const campaign = withDaily(campaignOn(today, campaigns), daily, today);
   if (!campaign) return null;
   const everyone = bestOf(campaign.codes.filter(c => !c.condition), priceSatang, isMall);
   const any = bestOf(campaign.codes, priceSatang, isMall);

@@ -4,7 +4,8 @@ import type { Alternative } from './match.js';
 import type { ItemReport, ShopInfo, VariantReport } from './report.js';
 import { baht, thaiDate } from './format.js';
 import { verdict } from './verdict.js';
-import { bangkokToday, codeFootnote, codeRows, estimateCodes } from './codes.js';
+import { bangkokToday, codeFootnote, codeRows, estimateCodes, type PlatformCode } from './codes.js';
+import type { RecordedPrice } from './owner.js';
 
 export { baht, thaiDate };
 
@@ -32,6 +33,15 @@ export function codeLines(codes: ReturnType<typeof estimateCodes>) {
   ]);
 }
 
+/** A price the owner really paid or saw (flash sale + codes), entered in LINE; the feed never shows these. */
+export function recordedLines(rec: RecordedPrice | null | undefined) {
+  if (!rec) return [];
+  return [
+    row(`เคยซื้อได้จริง (${thaiDate(rec.date)})`, baht(rec.priceSatang), { color: GREEN }),
+    ...(rec.note ? [text(rec.note, { size: 'xxs', color: MUTED, align: 'end' })] : []),
+  ];
+}
+
 interface Offer {
   itemId: number;
   shopId: number;
@@ -48,10 +58,13 @@ export interface CardInput {
   affiliateId: string;
   /** Bangkok date that picks the code campaign; defaults to now */
   today?: string;
+  /** platform codes the owner entered for today */
+  daily?: PlatformCode[];
+  recorded?: RecordedPrice | null;
 }
 
 /** The chat card (LINE Flex Message) from spec 7 / 11, without the chart and code-price parts of v1. */
-export function buildReplyCard({ report, variant, alternatives, affiliateId, today = bangkokToday() }: CardInput) {
+export function buildReplyCard({ report, variant, alternatives, affiliateId, today = bangkokToday(), daily = [], recorded }: CardInput) {
   const peers = alternatives.map(a => a.priceSatang).concat(variant.priceSatang);
   const offers: Offer[] = [
     { itemId: report.itemId, shopId: report.shopId, shop: report.shop, priceSatang: variant.priceSatang, mine: true,
@@ -65,7 +78,7 @@ export function buildReplyCard({ report, variant, alternatives, affiliateId, tod
   const v = verdict(variant, report.firstRecorded);
   const stale = variant.lastSeen < report.latestRecorded;
   const link = affiliateLink({ shopId: best.shopId, itemId: best.itemId }, affiliateId, SUB_ID);
-  const codes = estimateCodes(variant.priceSatang, report.shop.isOfficial, today);
+  const codes = estimateCodes(variant.priceSatang, report.shop.isOfficial, today, undefined, daily);
 
   const cheaper = offers.filter(o => !o.mine && o.priceSatang < mine.priceSatang).slice(0, 3);
   const others = cheaper.length
@@ -90,6 +103,7 @@ export function buildReplyCard({ report, variant, alternatives, affiliateId, tod
           row(stale ? `ราคาล่าสุดที่บันทึกได้ ${thaiDate(variant.lastSeen)}` : 'ราคาตอนนี้', baht(variant.priceSatang), { size: 'md' }),
           row(`ต่ำสุด (${thaiDate(variant.low.date)})`, baht(variant.low.priceSatang)),
           row(`สูงสุด (${thaiDate(variant.high.date)})`, baht(variant.high.priceSatang)),
+          ...recordedLines(recorded),
           ...codeLines(codes),
         ] },
         text(`${mine.badge.label} · ${mine.badge.reason}`, { size: 'xs', margin: 'md' }),

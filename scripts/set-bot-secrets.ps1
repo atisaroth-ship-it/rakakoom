@@ -7,7 +7,8 @@ $ErrorActionPreference = 'Stop'
 $secrets = @(
   @{ Name = 'DATABASE_URL';              Hint = 'Neon > Connect (ปิด Connection pooling) > Copy snippet ของ connection string (ตัวเดียวกับที่ใส่ใน GitHub)' },
   @{ Name = 'LINE_CHANNEL_SECRET';       Hint = 'LINE Developers > channel ราคาคุ้ม > แท็บ Basic settings > Channel secret' },
-  @{ Name = 'LINE_CHANNEL_ACCESS_TOKEN'; Hint = 'LINE Developers > channel ราคาคุ้ม > แท็บ Messaging API > Channel access token (ตัวเดียวกับที่ใส่ใน GitHub)' }
+  @{ Name = 'LINE_CHANNEL_ACCESS_TOKEN'; Hint = 'LINE Developers > channel ราคาคุ้ม > แท็บ Messaging API > Channel access token (ตัวเดียวกับที่ใส่ใน GitHub)' },
+  @{ Name = 'ADMIN_LINE_USER_ID';        Hint = 'LINE Developers > channel ราคาคุ้ม > แท็บ Basic settings > Your user ID (ตัวเดียวกับที่ใส่ใน GitHub) — ใช้คำสั่ง บันทึก / โค้ด ได้เฉพาะไอดีนี้' }
 )
 if ($Only) {
   $names = $Only | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() }

@@ -9,6 +9,8 @@ export interface Env {
   LINE_CHANNEL_SECRET: string;
   LINE_CHANNEL_ACCESS_TOKEN: string;
   AFFILIATE_ID: string;
+  /** owner's LINE user id(s), comma-separated; unset = no owner commands */
+  ADMIN_LINE_USER_ID?: string;
 }
 
 interface Ctx {
@@ -52,6 +54,7 @@ export default {
       affiliateId: env.AFFILIATE_ID,
       reply: (t: string, m: unknown[]) => lineReply(env.LINE_CHANNEL_ACCESS_TOKEN, t, m),
       resolve: (u: string) => resolveItemRef(u),
+      adminIds: (env.ADMIN_LINE_USER_ID ?? '').split(',').map(s => s.trim()).filter(Boolean),
     };
     // LINE wants a fast 200; the reply token stays valid while we look things up.
     ctx.waitUntil(Promise.all(events.map(ev => handleEvent(ev, deps).catch(err => console.error('event failed', err)))));
