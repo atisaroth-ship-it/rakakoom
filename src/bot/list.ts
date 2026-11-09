@@ -13,7 +13,7 @@ const cut = (s: string, n: number) => {
   return cps.length > n ? cps.slice(0, n - 1).join('') + '…' : s;
 };
 
-/** LINE carousels hold at most 12 bubbles. */
+/** LINE carousels hold at most 12 bubbles; one is left for the "more" bubble. */
 export const MAX_BUBBLES = 10;
 
 export interface ListedProduct {
@@ -53,10 +53,26 @@ export function productBubble(p: ListedProduct, affiliateId: string) {
   };
 }
 
-export function productCarousel(products: ListedProduct[], affiliateId: string, altText: string) {
+/** The last bubble of a carousel with more results: its button asks for the next page. */
+function moreBubble(data: string) {
+  return {
+    type: 'bubble', size: 'kilo',
+    body: { type: 'box', layout: 'vertical', justifyContent: 'center', height: '220px', spacing: 'sm', contents: [
+      text('ยังมีสินค้าอีก', { weight: 'bold', align: 'center' }),
+      text('กดดูชุดถัดไป', { size: 'xs', color: MUTED, align: 'center' }),
+      { type: 'button', style: 'secondary', height: 'sm', margin: 'md',
+        action: { type: 'postback', label: 'ดูเพิ่มเติม', data, displayText: 'ดูเพิ่มเติม' } },
+    ] },
+  };
+}
+
+/** `moreData`: the postback data of the "ดูเพิ่มเติม" bubble; omit when there are no more results. */
+export function productCarousel(products: ListedProduct[], affiliateId: string, altText: string, moreData?: string) {
+  const bubbles: unknown[] = products.slice(0, MAX_BUBBLES).map(p => productBubble(p, affiliateId));
+  if (moreData) bubbles.push(moreBubble(moreData));
   return {
     type: 'flex' as const,
     altText: cut(altText, 380),
-    contents: { type: 'carousel', contents: products.slice(0, MAX_BUBBLES).map(p => productBubble(p, affiliateId)) },
+    contents: { type: 'carousel', contents: bubbles },
   };
 }

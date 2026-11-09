@@ -100,12 +100,22 @@ async function answerText(said: string, deps: BotDeps, token: string) {
     await deps.reply(token, [textMessage(HOW_TO, MENU)]);
     return;
   }
+  await answerSearch(searchWords(said).join(' '), 0, deps, token, said);
+}
+
+/** postback data of the "more" bubble: `more:<offset>:<words>`; LINE allows 300 characters. */
+const moreData = (offset: number, words: string) => {
+  const data = `more:${offset}:${words}`;
+  return data.length <= 300 ? data : undefined;
+};
+
+async function answerSearch(words: string, offset: number, deps: BotDeps, token: string, label: string) {
   const started = Date.now();
-  const found = await searchProducts(deps.db, said);
-  console.log('search', { words: searchWords(said).length, results: found.length, ms: Date.now() - started });
-  await deps.reply(token, [found.length
-    ? productCarousel(found, deps.affiliateId, `ราคาคุ้ม: ผลค้นหา ${said}`)
-    : textMessage(NO_RESULTS, MENU)]);
+  const { products, more } = await searchProducts(deps.db, words, offset);
+  console.log('search', { words: searchWords(words).length, offset, results: products.length, more, ms: Date.now() - started });
+  await deps.reply(token, [products.length
+    ? productCarousel(products, deps.affiliateId, `ราคาคุ้ม: ผลค้นหา ${label}`, more ? moreData(offset + products.length, words) : undefined)
+    : textMessage(offset ? 'ไม่มีสินค้าเพิ่มแล้ว' : NO_RESULTS, MENU)]);
 }
 
 export async function handleEvent(ev: LineEvent, deps: BotDeps): Promise<void> {
@@ -119,6 +129,11 @@ export async function handleEvent(ev: LineEvent, deps: BotDeps): Promise<void> {
     const it = /^item:(\d+):(\d+)$/.exec(ev.postback.data);
     if (it) {
       await answerItem({ itemId: Number(it[1]), shopId: Number(it[2]) }, deps, token);
+      return;
+    }
+    const more = /^more:(\d+):(.+)$/s.exec(ev.postback.data);
+    if (more) {
+      await answerSearch(more[2]!, Number(more[1]), deps, token, more[2]!);
       return;
     }
     const m = /^variant:(\d+):(\d+)$/.exec(ev.postback.data);

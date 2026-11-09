@@ -167,3 +167,23 @@ test('deals: a price back down to an earlier level that is not the lowest is not
   await handleEvent(textEvent('ดีล'), d);
   expect(d.reply.mock.calls[0]![1][0].text).toContain('ยังไม่เจอสินค้าที่ราคาลดลงจริง');
 });
+
+test('search shows one product per shop (its best seller) and a "more" bubble pages through the rest', async () => {
+  const items = [item({ itemid: '1', shopid: '10', global_brand: 'Sony', title: 'หูฟัง Sony A', item_sold: '10' }),
+    item({ itemid: '2', shopid: '10', global_brand: 'Sony', title: 'หูฟัง Sony B', item_sold: '500' })];
+  for (let i = 0; i < 12; i++) items.push(item({ itemid: String(100 + i), shopid: String(200 + i), global_brand: 'Sony', title: `หูฟัง Sony S${i}`, item_sold: String(100 + i) }));
+  await upsertLatestPrices(db, '2026-10-28', items);
+  const d = deps();
+  await handleEvent(textEvent('หูฟัง sony'), d);
+  const first = d.reply.mock.calls[0]![1][0].contents.contents.map((b: unknown) => JSON.stringify(b));
+  expect(first).toHaveLength(11);
+  expect(first.join('')).not.toContain('Sony A');
+  expect(first.join('')).toContain('Sony B');
+  expect(first[10]).toContain('"data":"more:10:หูฟัง sony"');
+  await handleEvent({ type: 'postback', replyToken: 'R2', postback: { data: 'more:10:หูฟัง sony' } }, d);
+  const second = d.reply.mock.calls[1]![1][0].contents.contents;
+  expect(second).toHaveLength(3);
+  expect(JSON.stringify(second)).not.toContain('"data":"more:');
+  await handleEvent({ type: 'postback', replyToken: 'R3', postback: { data: 'more:99:หูฟัง sony' } }, d);
+  expect(d.reply.mock.calls[2]![1][0].text).toBe('ไม่มีสินค้าเพิ่มแล้ว');
+});
