@@ -30,18 +30,8 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           FEED_URLS: ${{ secrets.FEED_URLS }}
-          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
-          ADMIN_LINE_USER_ID: ${{ secrets.ADMIN_LINE_USER_ID }}
-          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
           DB_SIZE_LIMIT_MB: ${{ vars.DB_SIZE_LIMIT_MB }}
-          ALERT_MARKER: ${{ github.workspace }}/.collect-alerted
-      # Backstop: the job died without the program's own alert (timeout, runner lost, install failure).
-      # hashFiles only sees files inside the workspace, hence the marker lives there.
-      - name: Alert on job failure
-        if: (failure() || cancelled()) && hashFiles('.collect-alerted') == ''
-        run: bash scripts/notify-failure.sh "collect prices"
-        env:
-          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
-          ADMIN_LINE_USER_ID: ${{ secrets.ADMIN_LINE_USER_ID }}
-          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          # Owner asked on 20 Nov 2026 to stop the LINE / heartbeat alerts of the price collection.
+          # To turn them back on: restore LINE_CHANNEL_ACCESS_TOKEN, ADMIN_LINE_USER_ID and HEALTHCHECK_URL from
+          # secrets here, drop ALLOW_NO_ALERTS, and bring back the "Alert on job failure" step (see git history).
+          ALLOW_NO_ALERTS: '1'
