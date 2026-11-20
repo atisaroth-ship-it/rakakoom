@@ -1,0 +1,34 @@
+name: drop search index (manual)
+
+# One-off maintenance: drops the 300 MB name-search index on latest_prices to free database space.
+# Name search keeps working without it (slower). Manual only; type DROP to confirm.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DROP to confirm'
+        required: true
+
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  drop:
+    if: inputs.confirm == 'DROP'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Drop the search index
+        run: npx tsx src/maintenance/dropSearchIndexCli.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
