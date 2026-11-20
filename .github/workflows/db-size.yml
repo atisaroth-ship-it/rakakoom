@@ -1,0 +1,24 @@
+name: database size report (manual)
+
+# Read-only: prints how much space each table and index takes. Changes nothing. Manual only.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  size:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Report table and index sizes
+        run: npx tsx src/maintenance/dbSizeCli.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
