@@ -41,16 +41,5 @@ jobs:
           path: rakakoom-${{ env.DAY }}.dump
           retention-days: 90
           if-no-files-found: error
-      - name: Heartbeat
-        if: success()
-        run: '[ -z "$BACKUP_HEALTHCHECK_URL" ] || curl -fsS -m 30 "$BACKUP_HEALTHCHECK_URL" > /dev/null'
-        env:
-          BACKUP_HEALTHCHECK_URL: ${{ secrets.BACKUP_HEALTHCHECK_URL }}
-      - name: Alert on failure
-        if: failure() || cancelled()
-        run: bash scripts/notify-failure.sh "backup database"
-        env:
-          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
-          ADMIN_LINE_USER_ID: ${{ secrets.ADMIN_LINE_USER_ID }}
-          HEALTHCHECK_URL: ${{ secrets.BACKUP_HEALTHCHECK_URL }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      # Owner asked on 20 Nov 2026 to stop the LINE / heartbeat alerts of the backup too.
+      # To turn them back on, restore the "Heartbeat" and "Alert on failure" steps from git history.
